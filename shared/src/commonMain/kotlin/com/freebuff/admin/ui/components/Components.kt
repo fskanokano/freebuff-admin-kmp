@@ -50,9 +50,10 @@ fun StatCard(
     value: String,
     icon: String? = null,
     color: Color = AppColors.Blue,
+    modifier: Modifier = Modifier,
     colors: AppThemeColors = com.freebuff.admin.ui.theme.AppTheme.colors()
 ) {
-    AppCard(colors = colors) {
+    AppCard(modifier = modifier, colors = colors) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) {
                 Box(

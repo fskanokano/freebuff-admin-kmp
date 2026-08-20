@@ -51,11 +51,11 @@ class AppViewModel {
     val logFilter: StateFlow<LogFilter> = _logFilter.asStateFlow()
 
     private var pollJob: Job? = null
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     fun navigateTo(screen: Screen) {
         _currentScreen.value = screen
-        refreshCurrentScreen()
+        scope.launch { refreshCurrentScreen() }
     }
 
     fun showToast(message: String) {

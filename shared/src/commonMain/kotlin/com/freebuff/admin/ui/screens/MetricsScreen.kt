@@ -234,7 +234,7 @@ private fun TrendRow(
                 else -> colors.mutedForeground
             }
             Text(
-                text = "$icon ${String.format("%.1f", percentage)}%",
+                text = "$icon ${kotlin.math.round(percentage * 10) / 10}%",
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                 color = color
             )

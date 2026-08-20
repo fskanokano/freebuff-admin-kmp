@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Background circle -->
+    <path
+        android:fillColor="#007AFF"
+        android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0" />
+    <!-- Shield shape -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,24L34,34v15c0,12.5 8.7,24.2 20,27c11.3,-2.8 20,-14.5 20,-27V34L54,24z" />
+    <!-- Lightning bolt inside shield -->
+    <path
+        android:fillColor="#007AFF"
+        android:pathData="M56,40L48,56h6L50,72l12,-16h-6L60,40z" />
+</vector>

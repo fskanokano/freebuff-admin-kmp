@@ -1,97 +1,89 @@
 package com.freebuff.admin.ui.screens
-import com.freebuff.admin.ui.theme.AppThemeColors
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.freebuff.admin.model.OverviewData
-import com.freebuff.admin.model.RouteEntry
+import com.freebuff.admin.api.*
+import com.freebuff.admin.ui.AppViewModel
 import com.freebuff.admin.ui.components.*
-import com.freebuff.admin.ui.theme.AppColors
-import com.freebuff.admin.ui.theme.AppTheme
+import com.freebuff.admin.ui.theme.*
 
 @Composable
-fun OverviewScreen(data: OverviewData, onSmokeTest: () -> Unit) {
+fun OverviewScreen(viewModel: AppViewModel) {
+    val data by viewModel.overviewData.collectAsState()
     val colors = AppTheme.colors()
+
+    if (data == null) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = colors.primary)
+        }
+        return
+    }
+
+    val d = data!!
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(20.dp),
+        contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Connection status
+        // Status bar
         item {
-            val isHealthy = data.health == "ok" || data.health == "healthy"
-            AppCard(colors = colors) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .clip(CircleShape)
-                            .background(if (isHealthy) AppColors.Green else AppColors.Red)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "代理状态",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = colors.onSurface
-                        )
-                        Text(
-                            text = if (isHealthy) "运行正常" else "连接异常",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.mutedForeground
-                        )
-                    }
-                    StatusBadge(
-                        text = data.mode.ifEmpty { "pooled" },
-                        color = if (data.mode == "bridge") AppColors.Amber else AppColors.Green
-                    )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Mode
+                StatusBadge(
+                    text = if (d.in_bridge) "Bridge (${d.bridge_tokens})" else d.mode,
+                    color = if (d.in_bridge) AppColors.Purple else AppColors.Blue
+                )
+                // Version
+                data?.let {
+                    StatusBadge(text = "v${it.model_count}", color = colors.mutedForeground)
                 }
-                if (data.uptime.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    InfoRow(label = "运行时间", value = data.uptime)
+                // Uptime
+                if (d.uptime.isNotEmpty()) {
+                    StatusBadge(text = "Up: ${d.uptime}", color = AppColors.Green)
+                }
+                if (d.safe_mode) {
+                    StatusBadge(text = "Safe Mode", color = AppColors.Orange)
                 }
             }
         }
 
-        // Statistics grid
-        item {
-            SectionHeader(title = "实时统计")
-        }
-
+        // Stats grid
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 StatCard(
-                    label = "总请求",
-                    value = "${data.requests_total}",
-                    icon = "📊",
-                    color = AppColors.Blue,
+                    label = "Tokens",
+                    value = "${d.tokens.size}",
+                    icon = Icons.Default.Key,
+                    iconColor = AppColors.Blue,
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
-                    label = "今日请求",
-                    value = "${data.requests_today}",
-                    icon = "📈",
-                    color = AppColors.Green,
+                    label = "Models",
+                    value = "${d.model_count}",
+                    icon = Icons.Default.SmartToy,
+                    iconColor = AppColors.Green,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -103,150 +95,132 @@ fun OverviewScreen(data: OverviewData, onSmokeTest: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 StatCard(
-                    label = "令牌数",
-                    value = "${data.token_count}",
-                    icon = "🔑",
-                    color = AppColors.Amber,
+                    label = "Daily Limit",
+                    value = "${d.max_messages_per_day}",
+                    icon = Icons.Default.Speed,
+                    iconColor = AppColors.Amber,
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
-                    label = "模型数",
-                    value = "${data.model_count}",
-                    icon = "🤖",
-                    color = Color(0xFF8B5CF6),
+                    label = "Retries",
+                    value = "${d.transient_retries}",
+                    icon = Icons.Default.Refresh,
+                    iconColor = AppColors.Orange,
                     modifier = Modifier.weight(1f)
                 )
             }
         }
 
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatCard(
-                    label = "今日消息",
-                    value = "${data.messages_today}",
-                    icon = "💬",
-                    color = Color(0xFF06B6D4),
-                    modifier = Modifier.weight(1f)
-                )
-                StatCard(
-                    label = "今日消费",
-                    value = data.spend_today.ifEmpty { "$0" },
-                    icon = "💰",
-                    color = AppColors.Green,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-
-        // Token status overview
-        item {
-            SectionHeader(title = "令牌状态")
-        }
-
-        item {
-            AppCard(colors = colors) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    TokenStatusItem("活跃", data.tokens_active, AppColors.Green)
-                    TokenStatusItem("空闲", data.tokens_idle, AppColors.Gray400)
-                    TokenStatusItem("冷却", data.tokens_cooldown, AppColors.Amber)
-                    TokenStatusItem("封禁", data.tokens_banned, AppColors.Red)
-                }
-            }
-        }
-
-        // Smoke test
-        item {
-            AppCard(colors = colors) {
-                SectionHeader(title = "快速测试")
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "发送一个简单的请求验证代理是否正常工作",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.mutedForeground
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                AppButton(
-                    text = "🚀 执行 Smoke Test",
-                    onClick = onSmokeTest,
-                    variant = ButtonVariant.Secondary
-                )
-            }
-        }
-
-        // Recent routes
-        if (data.recent_routes.isNotEmpty()) {
+        // Token cards
+        if (d.tokens.isNotEmpty()) {
             item {
-                SectionHeader(title = "最近路由")
-            }
-
-            items(data.recent_routes.take(5)) { route ->
-                RouteItem(route, colors)
-            }
-        }
-    }
-}
-
-@Composable
-private fun TokenStatusItem(label: String, count: Int, color: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(color.copy(alpha = 0.12f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "$count",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = color
-            )
-        }
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = AppTheme.colors().mutedForeground
-        )
-    }
-}
-
-@Composable
-private fun RouteItem(route: RouteEntry, colors: AppThemeColors) {
-    AppCard(colors = colors) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(if (route.ok) AppColors.Green else AppColors.Red)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = route.name.ifEmpty { "未知" },
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                    text = "Active Tokens",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = colors.onSurface
                 )
-                Text(
-                    text = "${route.model} · HTTP ${route.http} · ${route.ms}ms",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.mutedForeground
-                )
             }
-            StatusBadge(
-                text = if (route.ok) "成功" else "失败",
-                color = if (route.ok) AppColors.Green else AppColors.Red
-            )
+
+            items(d.tokens) { token ->
+                AppCard(colors = colors) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            DotIndicator(
+                                color = when (token.session_status) {
+                                    "live" -> AppColors.Green
+                                    "standby" -> AppColors.Amber
+                                    else -> AppColors.Gray50
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Token ${token.index + 1}",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = colors.onSurface
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            StatusBadge(
+                                text = token.session_status,
+                                color = when (token.session_status) {
+                                    "live" -> AppColors.Green
+                                    "standby" -> AppColors.Amber
+                                    else -> AppColors.Gray50
+                                }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Usage bar
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(colors.surfaceVariant)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .fillMaxWidth(token.usage_pct / 100f)
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .background(
+                                            when {
+                                                token.usage_pct >= 90 -> AppColors.Red
+                                                token.usage_pct >= 70 -> AppColors.Orange
+                                                else -> AppColors.Blue
+                                            }
+                                        )
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "${token.messages_24h}/${token.daily_limit}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.mutedForeground
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Risk and queue
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (token.risk_level.isNotEmpty() && token.risk_level != "none") {
+                                StatusBadge(
+                                    text = token.risk_level,
+                                    color = when (token.risk_level) {
+                                        "high" -> AppColors.Red
+                                        "medium" -> AppColors.Orange
+                                        else -> AppColors.Amber
+                                    }
+                                )
+                            }
+                            if (token.queue_depth > 0) {
+                                StatusBadge(
+                                    text = "Queue: ${token.queue_depth}",
+                                    color = AppColors.Blue
+                                )
+                            }
+                            if (token.cooldown_active) {
+                                StatusBadge(text = "Cooldown", color = AppColors.Orange)
+                            }
+                            if (token.has_standing) {
+                                StatusBadge(
+                                    text = token.standing_label,
+                                    color = when (token.standing_level) {
+                                        "vip" -> AppColors.Purple
+                                        "trusted" -> AppColors.Green
+                                        else -> AppColors.Amber
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

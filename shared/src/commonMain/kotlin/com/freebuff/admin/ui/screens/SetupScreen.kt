@@ -1,7 +1,8 @@
 package com.freebuff.admin.ui.screens
-import com.freebuff.admin.ui.theme.AppThemeColors
 
-import androidx.compose.foundation.background
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,192 +10,174 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.freebuff.admin.model.SetupData
+import com.freebuff.admin.ui.AppViewModel
 import com.freebuff.admin.ui.components.*
-import com.freebuff.admin.ui.theme.AppColors
-import com.freebuff.admin.ui.theme.AppTheme
+import com.freebuff.admin.ui.theme.*
 
 @Composable
-fun SetupScreen(data: SetupData) {
+fun SetupScreen(viewModel: AppViewModel) {
+    val data by viewModel.setupData.collectAsState()
     val colors = AppTheme.colors()
+    val clipboardManager = LocalClipboardManager.current
+
+    if (data == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = colors.primary)
+        }
+        return
+    }
+
+    val d = data!!
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(20.dp),
+        contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Connection info
         item {
-            AppCard(colors = colors) {
-                SectionHeader(title = "🔗 连接信息")
-                Spacer(modifier = Modifier.height(12.dp))
-                InfoRow(label = "Base URL", value = data.base_url)
-                InfoRow(label = "模式", value = data.mode)
-                InfoRow(label = "默认模型", value = data.model)
-                InfoRow(label = "令牌数", value = "${data.token_count}")
+            GroupSection(title = "Connection", colors = colors) {
+                GroupRow(label = "Base URL", colors = colors, trailing = {
+                    Text(d.base_url, style = MaterialTheme.typography.bodySmall, color = colors.primary)
+                })
+                AppDivider()
+                GroupRow(label = "Key", colors = colors, trailing = {
+                    Text(d.key_hint, style = MaterialTheme.typography.bodySmall, color = colors.mutedForeground)
+                })
+                AppDivider()
+                GroupRow(label = "Model", colors = colors, trailing = {
+                    Text(d.model, style = MaterialTheme.typography.bodySmall, color = colors.onSurface)
+                })
+                AppDivider()
+                GroupRow(label = "Mode", colors = colors, trailing = {
+                    StatusBadge(
+                        text = if (d.bridge) "Bridge" else d.mode,
+                        color = if (d.bridge) AppColors.Purple else AppColors.Blue
+                    )
+                })
+                AppDivider()
+                GroupRow(label = "Tokens", colors = colors, trailing = {
+                    Text("${d.token_count}", style = MaterialTheme.typography.bodySmall, color = colors.onSurface)
+                })
             }
         }
 
-        // Client setup cards
+        // OpenCode setup
         item {
-            SectionHeader(title = "📋 客户端配置")
+            val baseUrl = d.base_url.ifEmpty { "http://YOUR_HOST:PORT" }
+            val apiKey = d.key_hint.ifEmpty { "YOUR_API_KEY" }
+            val setupCode = """export OPENAI_BASE_URL="$baseUrl/v1"
+export OPENAI_API_KEY="$apiKey"
+
+# Test
+curl $baseUrl/v1/models -H "Authorization: Bearer $apiKey"
+# Expected: {"object":"list","data":[{"id":"${d.model}","object":"model"}]}"""
+            CodeBlock("OpenCode / VS Code", setupCode, clipboardManager, colors)
         }
 
-        // OpenCode
+        // Cursor
         item {
-            SetupCard(
-                title = "OpenCode",
-                icon = "💻",
-                config = """
-                    Base URL: ${data.base_url}
-                    API Key: ${if (data.bridge) "your-freebuff-token" else "not-needed"}
-                    Model: ${data.model}
-                """.trimIndent(),
-                colors = colors
-            )
-        }
+            val baseUrl = d.base_url.ifEmpty { "http://YOUR_HOST:PORT" }
+            val apiKey = d.key_hint.ifEmpty { "YOUR_API_KEY" }
+            val setupCode = """export ANTHROPIC_BASE_URL="$baseUrl"
+export ANTHROPIC_API_KEY="$apiKey"
+export ANTHROPIC_MODEL="${d.model}"
+export OPENAI_BASE_URL="$baseUrl"
+export OPENAI_API_KEY="$apiKey"
 
-        // Cursor / VS Code
-        item {
-            SetupCard(
-                title = "Cursor / VS Code",
-                icon = "📝",
-                config = """
-                    # settings.json
-                    {
-                      "openai.baseUrl": "${data.base_url}",
-                      "openai.apiKey": "${if (data.bridge) "your-freebuff-token" else "not-needed"}",
-                      "openai.model": "${data.model}"
-                    }
-                """.trimIndent(),
-                colors = colors
-            )
+# OpenCode
+export OPENCODE_PROVIDER=anthropic
+export OPENCODE_MODEL="${d.model}"
+export OPENCODE_MAX_TOKENS=8192"""
+            CodeBlock("Cursor", setupCode, clipboardManager, colors)
         }
 
         // Continue
         item {
-            SetupCard(
-                title = "Continue (VS Code)",
-                icon = "🔄",
-                config = """
-                    # config.yaml
-                    models:
-                      - name: FreeBuff
-                        provider: openai
-                        model: ${data.model}
-                        apiBase: ${data.base_url}
-                        apiKey: "${if (data.bridge) "your-freebuff-token" else "not-needed"}"
-                """.trimIndent(),
-                colors = colors
-            )
+            val baseUrl = d.base_url.ifEmpty { "http://YOUR_HOST:PORT" }
+            val apiKey = d.key_hint.ifEmpty { "YOUR_API_KEY" }
+            val setupCode = """# Continue config (~/.continue/config.yaml)
+models:
+  - title: Freebuff
+    provider: anthropic
+    model: ${d.model}
+    apiKey: $apiKey
+    apiBase: $baseUrl"""
+            CodeBlock("Continue", setupCode, clipboardManager, colors)
         }
 
         // Chatbox
         item {
-            SetupCard(
-                title = "Chatbox",
-                icon = "💬",
-                config = """
-                    API Host: ${data.base_url}
-                    API Key: ${if (data.bridge) "your-freebuff-token" else "not-needed"}
-                    Model: ${data.model}
-                """.trimIndent(),
-                colors = colors
-            )
+            val baseUrl = d.base_url.ifEmpty { "http://YOUR_HOST:PORT" }
+            val apiKey = d.key_hint.ifEmpty { "YOUR_API_KEY" }
+            val setupCode = """API Host: Custom
+Base URL: $baseUrl
+API Key: $apiKey
+Model: ${d.model}"""
+            CodeBlock("Chatbox", setupCode, clipboardManager, colors)
         }
 
-        // curl test
+        // cURL
         item {
-            SetupCard(
-                title = "cURL 测试",
-                icon = "🖥️",
-                config = """
-                    curl ${data.base_url}/chat/completions \
-                      -H "Authorization: Bearer ${if (data.bridge) "your-freebuff-token" else "not-needed"}" \
-                      -H "Content-Type: application/json" \
-                      -d '{"model":"${data.model}","messages":[{"role":"user","content":"hi"}],"stream":true}
-                """.trimIndent(),
-                colors = colors
-            )
-        }
-
-        // Models available
-        item {
-            AppCard(colors = colors) {
-                SectionHeader(title = "🤖 可用模型")
-                Spacer(modifier = Modifier.height(12.dp))
-                data.models.forEach { model ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(RoundedCornerShape(3.dp))
-                                .background(
-                                    if (model == data.model) AppColors.Green else AppColors.Gray400
-                                )
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = model,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = if (model == data.model) FontWeight.Bold else FontWeight.Normal
-                            ),
-                            color = if (model == data.model) AppColors.Green else colors.onSurface
-                        )
-                        if (model == data.model) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            StatusBadge(text = "推荐", color = AppColors.Green)
-                        }
-                    }
-                }
-            }
+            val baseUrl = d.base_url.ifEmpty { "http://YOUR_HOST:PORT" }
+            val apiKey = d.key_hint.ifEmpty { "YOUR_API_KEY" }
+            val setupCode = """curl "$baseUrl/v1/chat/completions" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer $apiKey" \\
+  -d '{"model":"${d.model}","messages":[{"role":"user","content":"Hello"}]}'"""
+            CodeBlock("cURL", setupCode, clipboardManager, colors)
         }
     }
 }
 
 @Composable
-private fun SetupCard(
+private fun CodeBlock(
     title: String,
-    icon: String,
-    config: String,
+    code: String,
+    clipboardManager: androidx.compose.ui.platform.ClipboardManager,
     colors: AppThemeColors
 ) {
     AppCard(colors = colors) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(icon, fontSize = 20.sp)
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = colors.onSurface
-            )
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = colors.onSurface
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                TextButton(onClick = {
+                    clipboardManager.setText(AnnotatedString(code))
+                }) {
+                    Text("Copy", fontSize = 12.sp, color = colors.primary)
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                color = colors.surfaceVariant
+            ) {
+                Text(
+                    text = code,
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        lineHeight = 16.sp
+                    ),
+                    color = colors.onSurface,
+                    maxLines = 20,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = config,
-            style = MaterialTheme.typography.bodySmall.copy(
-                fontFamily = FontFamily.Monospace,
-                fontSize = 11.sp,
-                lineHeight = 16.sp
-            ),
-            color = colors.onSurface,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(colors.surfaceVariant)
-                .padding(12.dp)
-        )
     }
 }

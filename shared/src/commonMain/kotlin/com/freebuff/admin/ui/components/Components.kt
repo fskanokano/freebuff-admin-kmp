@@ -1,6 +1,5 @@
 package com.freebuff.admin.ui.components
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,376 +11,268 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.freebuff.admin.ui.theme.AppColors
+import com.freebuff.admin.ui.theme.AppTheme
 import com.freebuff.admin.ui.theme.AppThemeColors
 
-// ── Card ──
+// -- AppCard: insetGrouped iOS style --
+
 @Composable
 fun AppCard(
     modifier: Modifier = Modifier,
-    colors: AppThemeColors = com.freebuff.admin.ui.theme.AppTheme.colors(),
-    onClick: (() -> Unit)? = null,
+    colors: AppThemeColors = AppTheme.colors(),
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(colors.card)
-            .border(1.dp, colors.cardBorder, RoundedCornerShape(16.dp))
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(20.dp),
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = colors.card),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, colors.borderSubtle),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         content = content
     )
 }
 
-// ── Stat Card ──
+// -- GroupSection: section header --
+
 @Composable
-fun StatCard(
-    label: String,
-    value: String,
-    icon: String? = null,
-    color: Color = AppColors.Blue,
-    modifier: Modifier = Modifier,
-    colors: AppThemeColors = com.freebuff.admin.ui.theme.AppTheme.colors()
+fun GroupSection(
+    title: String,
+    colors: AppThemeColors = AppTheme.colors(),
+    content: @Composable ColumnScope.() -> Unit
 ) {
-    AppCard(modifier = modifier, colors = colors) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (icon != null) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(color.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(icon, fontSize = 18.sp)
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.mutedForeground
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 26.sp
-                    ),
-                    color = colors.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.sp,
+                letterSpacing = 0.5.sp
+            ),
+            color = colors.mutedForeground,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+        AppCard(colors = colors) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                content()
             }
         }
     }
 }
 
-// ── Status Badge ──
+// -- GroupRow: setting row --
+
+@Composable
+fun GroupRow(
+    label: String,
+    modifier: Modifier = Modifier,
+    trailing: @Composable (() -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
+    colors: AppThemeColors = AppTheme.colors()
+) {
+    val rowMod = if (onClick != null) {
+        modifier.clickable(onClick = onClick)
+    } else {
+        modifier
+    }
+
+    Row(
+        modifier = rowMod
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = colors.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+        trailing?.invoke()
+    }
+}
+
+// -- StatusBadge --
+
 @Composable
 fun StatusBadge(
     text: String,
     color: Color,
-    colors: AppThemeColors = com.freebuff.admin.ui.theme.AppTheme.colors()
+    colors: AppThemeColors = AppTheme.colors()
 ) {
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = color.copy(alpha = 0.12f),
+    Box(
         modifier = Modifier
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(color)
-            )
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 11.sp
-                ),
-                color = color
-            )
-        }
-    }
-}
-
-// ── Section Header ──
-@Composable
-fun SectionHeader(
-    title: String,
-    actions: @Composable RowScope.() -> Unit = {},
-    colors: AppThemeColors = com.freebuff.admin.ui.theme.AppTheme.colors()
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .clip(RoundedCornerShape(6.dp))
+            .background(color.copy(alpha = 0.12f))
+            .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
         Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp
+            text = text,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Medium,
+                fontSize = 11.sp
             ),
-            color = colors.onSurface
+            color = color
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            actions()
+    }
+}
+
+// -- StatCard --
+
+@Composable
+fun StatCard(
+    label: String,
+    value: String,
+    icon: ImageVector? = null,
+    iconColor: Color = AppColors.Blue,
+    modifier: Modifier = Modifier,
+    colors: AppThemeColors = AppTheme.colors()
+) {
+    AppCard(modifier = modifier, colors = colors) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.5).sp
+                ),
+                color = colors.onSurface
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.mutedForeground
+            )
         }
     }
 }
 
-// ── App Button ──
+// -- GlassButton --
+
 @Composable
-fun AppButton(
+fun GlassButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    variant: ButtonVariant = ButtonVariant.Primary,
     enabled: Boolean = true,
-    loading: Boolean = false,
-    colors: AppThemeColors = com.freebuff.admin.ui.theme.AppTheme.colors()
+    destructive: Boolean = false,
+    colors: AppThemeColors = AppTheme.colors()
 ) {
-    val bgColor = when (variant) {
-        ButtonVariant.Primary -> colors.primary
-        ButtonVariant.Secondary -> colors.surface
-        ButtonVariant.Destructive -> colors.destructive
-        ButtonVariant.Ghost -> Color.Transparent
-    }
-    val contentColor = when (variant) {
-        ButtonVariant.Primary -> colors.onPrimary
-        ButtonVariant.Secondary -> colors.onSurface
-        ButtonVariant.Destructive -> Color.White
-        ButtonVariant.Ghost -> colors.primary
-    }
-    val borderColor = when (variant) {
-        ButtonVariant.Secondary -> colors.border
-        else -> Color.Transparent
+    val bgColor = when {
+        !enabled -> colors.surfaceVariant
+        destructive -> AppColors.Red
+        else -> colors.primary
     }
 
     Button(
         onClick = onClick,
-        modifier = modifier.height(40.dp),
-        enabled = enabled && !loading,
+        modifier = modifier.height(44.dp),
+        enabled = enabled,
         shape = RoundedCornerShape(10.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = bgColor,
-            contentColor = contentColor,
-            disabledContainerColor = bgColor.copy(alpha = 0.5f),
-            disabledContentColor = contentColor.copy(alpha = 0.5f)
+            contentColor = Color.White,
+            disabledContainerColor = colors.surfaceVariant,
+            disabledContentColor = colors.mutedForeground
         ),
-        border = if (borderColor != Color.Transparent) ButtonDefaults.outlinedButtonBorder(enabled = enabled) else null,
-        contentPadding = PaddingValues(horizontal = 16.dp)
+        contentPadding = PaddingValues(horizontal = 20.dp)
     ) {
-        if (loading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(16.dp),
-                strokeWidth = 2.dp,
-                color = contentColor
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-        }
         Text(
             text = text,
-            style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp)
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
         )
     }
 }
 
-enum class ButtonVariant {
-    Primary, Secondary, Destructive, Ghost
-}
+// -- PillButton (for mode switcher) --
 
-// ── Progress Bar ──
 @Composable
-fun ProgressBar(
-    progress: Float,
-    modifier: Modifier = Modifier,
-    color: Color = AppColors.Blue,
-    trackColor: Color = AppColors.Gray200,
-    height: Int = 6
+fun PillButton(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    colors: AppThemeColors = AppTheme.colors()
 ) {
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(height.dp)
-            .clip(RoundedCornerShape(height / 2))
-            .background(trackColor)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .fillMaxWidth(fraction = progress.coerceIn(0f, 1f))
-                .clip(RoundedCornerShape(height / 2))
-                .background(color)
-        )
-    }
-}
-
-// ── Info Row ──
-@Composable
-fun InfoRow(
-    label: String,
-    value: String,
-    colors: AppThemeColors = com.freebuff.admin.ui.theme.AppTheme.colors()
-) {
-    Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (selected) colors.primary else colors.surfaceVariant)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.mutedForeground
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-            color = colors.onSurface
+            text = text,
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+            ),
+            color = if (selected) Color.White else colors.onSurface
         )
     }
 }
 
-// ── Divider ──
+// -- Divider --
+
 @Composable
-fun AppDivider(colors: AppThemeColors = com.freebuff.admin.ui.theme.AppTheme.colors()) {
+fun AppDivider(
+    modifier: Modifier = Modifier,
+    colors: AppThemeColors = AppTheme.colors()
+) {
     HorizontalDivider(
-        modifier = Modifier.padding(vertical = 8.dp),
-        color = colors.border,
-        thickness = 0.5.dp
+        modifier = modifier.padding(horizontal = 16.dp),
+        thickness = 0.5.dp,
+        color = colors.borderSubtle
     )
 }
 
-// ── Toast ──
+// -- Dot indicator --
+
 @Composable
-fun Toast(
+fun DotIndicator(
+    color: Color,
+    size: Int = 8
+) {
+    Box(
+        modifier = Modifier
+            .size(size.dp)
+            .clip(CircleShape)
+            .background(color)
+    )
+}
+
+// -- Toast-like message --
+
+@Composable
+fun ToastSnackbar(
     message: String,
     onDismiss: () -> Unit,
-    colors: AppThemeColors = com.freebuff.admin.ui.theme.AppTheme.colors()
+    colors: AppThemeColors = AppTheme.colors()
 ) {
-    AnimatedVisibility(
-        visible = message.isNotEmpty(),
-        enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = colors.card,
-            shadowElevation = 8.dp,
-            border = ButtonDefaults.outlinedButtonBorder
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("💬", fontSize = 18.sp)
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.onSurface,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = "✕",
-                    modifier = Modifier.clickable(onClick = onDismiss),
-                    color = colors.mutedForeground
-                )
+    Snackbar(
+        modifier = Modifier.padding(16.dp),
+        containerColor = colors.card,
+        contentColor = colors.onSurface,
+        shape = RoundedCornerShape(12.dp),
+        action = {
+            TextButton(onClick = onDismiss) {
+                Text("OK", color = colors.primary)
             }
         }
-    }
-}
-
-// ── Empty State ──
-@Composable
-fun EmptyState(
-    icon: String = "📭",
-    title: String,
-    description: String = "",
-    colors: AppThemeColors = com.freebuff.admin.ui.theme.AppTheme.colors()
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(48.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(icon, fontSize = 48.sp)
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = colors.onSurface
-        )
-        if (description.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.mutedForeground
-            )
-        }
+        Text(message)
     }
-}
-
-// ── Loading ──
-@Composable
-fun LoadingOverlay(colors: AppThemeColors = com.freebuff.admin.ui.theme.AppTheme.colors()) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(32.dp),
-                color = colors.primary,
-                strokeWidth = 3.dp
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                "加载中...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.mutedForeground
-            )
-        }
-    }
-}
-
-// ── Token Risk Color ──
-fun riskColor(risk: String): Color = when (risk) {
-    "high", "critical" -> AppColors.Red
-    "moderate" -> AppColors.Amber
-    else -> AppColors.Green
-}
-
-// ── Status Color ──
-fun statusColor(status: String): Color = when {
-    status.contains("ok", ignoreCase = true) || status.contains("active", ignoreCase = true) -> AppColors.Green
-    status.contains("cooldown", ignoreCase = true) || status.contains("waiting", ignoreCase = true) -> AppColors.Amber
-    status.contains("banned", ignoreCase = true) || status.contains("error", ignoreCase = true) -> AppColors.Red
-    else -> AppColors.Gray400
 }

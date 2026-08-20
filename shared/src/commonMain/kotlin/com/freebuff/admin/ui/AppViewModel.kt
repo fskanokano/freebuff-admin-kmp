@@ -1,239 +1,352 @@
 package com.freebuff.admin.ui
 
-import com.freebuff.admin.api.AdminApi
-import com.freebuff.admin.api.ConnectionState
-import com.freebuff.admin.model.*
+import com.freebuff.admin.api.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.*
+
+enum class Screen {
+    Overview,
+    Tokens,
+    Models,
+    Traces,
+    Setup,
+    Playground,
+    Config,
+    Logs,
+    Metrics,
+}
 
 class AppViewModel {
     val api = AdminApi()
 
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    private val _currentScreen = MutableStateFlow(Screen.Overview)
-    val currentScreen: StateFlow<Screen> = _currentScreen.asStateFlow()
-
-    private val _overview = MutableStateFlow(OverviewData())
-    val overview: StateFlow<OverviewData> = _overview.asStateFlow()
-
-    private val _tokens = MutableStateFlow(TokensData())
-    val tokens: StateFlow<TokensData> = _tokens.asStateFlow()
-
-    private val _models = MutableStateFlow(ModelsData())
-    val models: StateFlow<ModelsData> = _models.asStateFlow()
-
-    private val _traces = MutableStateFlow(TracesData())
-    val traces: StateFlow<TracesData> = _traces.asStateFlow()
-
-    private val _logs = MutableStateFlow(LogsData())
-    val logs: StateFlow<LogsData> = _logs.asStateFlow()
-
-    private val _metrics = MutableStateFlow(MetricsData())
-    val metrics: StateFlow<MetricsData> = _metrics.asStateFlow()
-
-    private val _setup = MutableStateFlow(SetupData())
-    val setup: StateFlow<SetupData> = _setup.asStateFlow()
-
-    private val _config = MutableStateFlow(ConfigData())
-    val config: StateFlow<ConfigData> = _config.asStateFlow()
-
-    private val _version = MutableStateFlow(VersionData())
-    val version: StateFlow<VersionData> = _version.asStateFlow()
-
-    private val _toastMessage = MutableStateFlow<String?>(null)
-    val toastMessage: StateFlow<String?> = _toastMessage.asStateFlow()
-
-    private val _logFilter = MutableStateFlow(LogFilter())
-    val logFilter: StateFlow<LogFilter> = _logFilter.asStateFlow()
-
-    private var pollJob: Job? = null
+    val currentScreen = MutableStateFlow(Screen.Overview)
+    val isLoading = MutableStateFlow(false)
+    val toastMessage = MutableStateFlow<String?>(null)
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    // Data caches
+    val overviewData = MutableStateFlow<OverviewData?>(null)
+    val tokensData = MutableStateFlow<TokensData?>(null)
+    val modelsData = MutableStateFlow<ModelsData?>(null)
+    val tracesData = MutableStateFlow<TracesData?>(null)
+    val setupData = MutableStateFlow<SetupData?>(null)
+    val configData = MutableStateFlow<ConfigData?>(null)
+    val logsData = MutableStateFlow<LogsData?>(null)
+    val metricsData = MutableStateFlow<MetricsData?>(null)
+    val versionData = MutableStateFlow<VersionData?>(null)
+
+    // Playground state
+    val chatMessages = MutableStateFlow<List<ChatMessage>>(emptyList())
+    val isChatLoading = MutableStateFlow(false)
+    val availableModels = MutableStateFlow<List<String>>(emptyList())
+    val selectedModel = MutableStateFlow("")
+
+    // Config editor state
+    val configContent = MutableStateFlow("")
+
+    // Logs filter state
+    val logLevelFilter = MutableStateFlow("")
+    val logMsgFilter = MutableStateFlow("")
+
+    suspend fun login(host: String, port: Int, password: String): Boolean {
+        isLoading.value = true
+        try {
+            val result = api.connect(host, port, password)
+            if (result) {
+                refreshCurrentScreen()
+            }
+            return result
+        } catch (e: Exception) {
+            return false
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    fun logout() {
+        api.disconnect()
+        overviewData.value = null
+        tokensData.value = null
+        modelsData.value = null
+        tracesData.value = null
+        setupData.value = null
+        configData.value = null
+        logsData.value = null
+        metricsData.value = null
+        versionData.value = null
+        chatMessages.value = emptyList()
+    }
+
     fun navigateTo(screen: Screen) {
-        _currentScreen.value = screen
+        currentScreen.value = screen
         scope.launch { refreshCurrentScreen() }
     }
 
+    fun refreshCurrentScreen() {
+        scope.launch {
+            try {
+                when (currentScreen.value) {
+                    Screen.Overview -> {
+                        overviewData.value = api.getOverview()
+                        versionData.value = api.getVersion()
+                    }
+                    Screen.Tokens -> tokensData.value = api.getTokens()
+                    Screen.Models -> modelsData.value = api.getModels()
+                    Screen.Traces -> tracesData.value = api.getTraces()
+                    Screen.Setup -> {
+                        setupData.value = api.getSetup()
+                        availableModels.value = setupData.value?.models ?: emptyList()
+                        if (selectedModel.value.isEmpty()) {
+                            selectedModel.value = setupData.value?.model ?: ""
+                        }
+                    }
+                    Screen.Config -> configData.value = api.getConfig()
+                    Screen.Logs -> logsData.value = api.getLogs(logLevelFilter.value, logMsgFilter.value)
+                    Screen.Metrics -> metricsData.value = api.getMetrics()
+                    Screen.Playground -> {
+                        if (modelsData.value == null) {
+                            modelsData.value = api.getModels()
+                        }
+                        availableModels.value = modelsData.value?.models?.map { it.id } ?: emptyList()
+                    }
+                }
+            } catch (e: Exception) {
+                toastMessage.value = "Refresh failed: ${e.message}"
+            }
+        }
+    }
+
     fun showToast(message: String) {
-        _toastMessage.value = message
+        toastMessage.value = message
         scope.launch {
             delay(3000)
-            _toastMessage.value = null
-        }
-    }
-
-    fun dismissToast() {
-        _toastMessage.value = null
-    }
-
-    suspend fun login(host: String, port: Int, password: String): Boolean {
-        _isLoading.value = true
-        try {
-            api.configure(host, port, password)
-            val success = api.login(password)
-            if (success) {
-                startPolling()
-                refreshAll()
-            }
-            return success
-        } finally {
-            _isLoading.value = false
-        }
-    }
-
-    suspend fun logout() {
-        pollJob?.cancel()
-        api.logout()
-    }
-
-    private fun startPolling() {
-        pollJob?.cancel()
-        pollJob = scope.launch {
-            while (isActive) {
-                try {
-                    refreshCurrentScreen()
-                } catch (_: Exception) {}
-                delay(5000)
+            if (toastMessage.value == message) {
+                toastMessage.value = null
             }
         }
     }
 
-    suspend fun refreshAll() {
-        _isLoading.value = true
-        try {
-            coroutineScope {
-                launch { _overview.value = api.getOverview() }
-                launch { _tokens.value = api.getTokens() }
-                launch { _models.value = api.getModels() }
-                launch { _traces.value = api.getTraces() }
-                launch { _logs.value = api.getLogs() }
-                launch { _metrics.value = api.getMetrics() }
-                launch { _setup.value = api.getSetup() }
-                launch { _config.value = api.getConfig() }
-                launch { _version.value = api.getVersion() }
-            }
-        } finally {
-            _isLoading.value = false
-        }
-    }
-
-    suspend fun refreshCurrentScreen() {
-        when (_currentScreen.value) {
-            Screen.Overview -> _overview.value = api.getOverview()
-            Screen.Tokens -> _tokens.value = api.getTokens()
-            Screen.Models -> _models.value = api.getModels()
-            Screen.Traces -> _traces.value = api.getTraces()
-            Screen.Logs -> {
-                val f = _logFilter.value
-                _logs.value = api.getLogs(f.level, f.message)
-            }
-            Screen.Metrics -> _metrics.value = api.getMetrics()
-            Screen.Setup -> _setup.value = api.getSetup()
-            Screen.Config -> _config.value = api.getConfig()
-            else -> {}
-        }
-        _version.value = api.getVersion()
-    }
-
-    fun updateLogFilter(filter: LogFilter) {
-        _logFilter.value = filter
+    // Token actions
+    fun testToken(id: Int) {
         scope.launch {
-            _logs.value = api.getLogs(filter.level, filter.message)
+            isLoading.value = true
+            try {
+                val result = api.testToken(id)
+                showToast(result.message)
+                tokensData.value = api.getTokens()
+            } catch (e: Exception) {
+                showToast("Test failed: ${e.message}")
+            } finally {
+                isLoading.value = false
+            }
         }
     }
 
-    suspend fun testToken(tokenId: Int): ActionResponse {
-        val result = api.testToken(tokenId)
-        showToast(result.message)
-        return result
+    fun testAllTokens() {
+        scope.launch {
+            isLoading.value = true
+            try {
+                val results = api.testAllTokens()
+                val summary = results.joinToString("\n") { "Token ${it.token}: ${if (it.ok) "OK" else "FAIL"} - ${it.message}" }
+                showToast("Test complete: ${results.count { it.ok }}/${results.size} passed")
+                tokensData.value = api.getTokens()
+            } catch (e: Exception) {
+                showToast("Test failed: ${e.message}")
+            } finally {
+                isLoading.value = false
+            }
+        }
     }
 
-    suspend fun testAllTokens(): ActionResponse {
-        val result = api.testAllTokens()
-        showToast(result.message)
-        return result
+    fun unlockToken(id: Int) {
+        scope.launch {
+            isLoading.value = true
+            try {
+                val result = api.unlockToken(id)
+                showToast(result.message)
+                tokensData.value = api.getTokens()
+            } catch (e: Exception) {
+                showToast("Unlock failed: ${e.message}")
+            } finally {
+                isLoading.value = false
+            }
+        }
     }
 
-    suspend fun unlockToken(tokenId: Int): ActionResponse {
-        val result = api.unlockToken(tokenId)
-        showToast(result.message)
-        return result
+    fun finishToken(id: Int) {
+        scope.launch {
+            isLoading.value = true
+            try {
+                val result = api.finishToken(id)
+                showToast(result.message)
+                tokensData.value = api.getTokens()
+            } catch (e: Exception) {
+                showToast("Finish failed: ${e.message}")
+            } finally {
+                isLoading.value = false
+            }
+        }
     }
 
-    suspend fun finishToken(tokenId: Int): ActionResponse {
-        val result = api.finishToken(tokenId)
-        showToast(result.message)
-        return result
+    fun addToken(token: String) {
+        scope.launch {
+            isLoading.value = true
+            try {
+                val result = api.addToken(token)
+                showToast(result.message)
+                tokensData.value = api.getTokens()
+            } catch (e: Exception) {
+                showToast("Add failed: ${e.message}")
+            } finally {
+                isLoading.value = false
+            }
+        }
     }
 
-    suspend fun addToken(token: String): ActionResponse {
-        val result = api.addToken(token)
-        showToast(result.message)
-        if (result.ok) refreshAll()
-        return result
+    fun removeToken() {
+        scope.launch {
+            isLoading.value = true
+            try {
+                val result = api.removeToken()
+                showToast(result.message)
+                tokensData.value = api.getTokens()
+            } catch (e: Exception) {
+                showToast("Remove failed: ${e.message}")
+            } finally {
+                isLoading.value = false
+            }
+        }
     }
 
-    suspend fun removeToken(token: String): ActionResponse {
-        val result = api.removeToken(token)
-        showToast(result.message)
-        if (result.ok) refreshAll()
-        return result
+    fun switchMode(mode: String) {
+        scope.launch {
+            isLoading.value = true
+            try {
+                val result = api.switchMode(mode)
+                showToast(result.message)
+                overviewData.value = api.getOverview()
+                tokensData.value = api.getTokens()
+            } catch (e: Exception) {
+                showToast("Mode switch failed: ${e.message}")
+            } finally {
+                isLoading.value = false
+            }
+        }
     }
 
-    suspend fun saveConfig(config: ConfigData): ActionResponse {
-        val result = api.saveConfig(config)
-        showToast(result.message)
-        if (result.ok) _config.value = config
-        return result
+    fun saveConfig(content: String) {
+        scope.launch {
+            isLoading.value = true
+            try {
+                val result = api.saveConfig(content)
+                showToast(result.message)
+                configData.value = api.getConfig()
+            } catch (e: Exception) {
+                showToast("Save failed: ${e.message}")
+            } finally {
+                isLoading.value = false
+            }
+        }
     }
 
-    suspend fun switchMode(mode: String): ActionResponse {
-        val result = api.switchMode(mode)
-        showToast(result.message)
-        if (result.ok) refreshAll()
-        return result
+    fun reloadConfig() {
+        scope.launch {
+            isLoading.value = true
+            try {
+                val result = api.reloadConfig()
+                showToast(result.message)
+                configData.value = api.getConfig()
+            } catch (e: Exception) {
+                showToast("Reload failed: ${e.message}")
+            } finally {
+                isLoading.value = false
+            }
+        }
     }
 
-    suspend fun runSmoke(model: String, prompt: String): ActionResponse {
-        return api.runSmoke(model, prompt)
+    fun runSmoke(model: String) {
+        scope.launch {
+            isLoading.value = true
+            try {
+                val result = api.runSmoke(model)
+                if (result.ok) {
+                    showToast("Smoke test OK: ${result.model} in ${result.ms}ms")
+                } else {
+                    showToast("Smoke test failed")
+                }
+            } catch (e: Exception) {
+                showToast("Smoke test failed: ${e.message}")
+            } finally {
+                isLoading.value = false
+            }
+        }
     }
 
-    suspend fun runDiag(): ActionResponse {
-        val result = api.runDiag()
-        showToast(result.message)
-        return result
+    // Playground
+    fun sendChatMessage(content: String) {
+        if (content.isBlank()) return
+        val model = selectedModel.value
+        if (model.isBlank()) {
+            showToast("Please select a model first")
+            return
+        }
+
+        val messages = chatMessages.value.toMutableList()
+        messages.add(ChatMessage("user", content))
+        chatMessages.value = messages
+        isChatLoading.value = true
+
+        val responseBuilder = StringBuilder()
+        api.chatStream(
+            model = model,
+            messages = messages,
+            onChunk = { chunk ->
+                responseBuilder.append(chunk)
+                val currentMessages = chatMessages.value.toMutableList()
+                // Update or add assistant message
+                val lastAssistant = currentMessages.lastOrNull { it.role == "assistant" }
+                if (lastAssistant != null) {
+                    currentMessages[currentMessages.size - 1] = ChatMessage("assistant", responseBuilder.toString())
+                } else {
+                    currentMessages.add(ChatMessage("assistant", responseBuilder.toString()))
+                }
+                chatMessages.value = currentMessages
+            },
+            onDone = {
+                isChatLoading.value = false
+                if (responseBuilder.isEmpty()) {
+                    val currentMessages = chatMessages.value.toMutableList()
+                    currentMessages.add(ChatMessage("assistant", "(empty response)"))
+                    chatMessages.value = currentMessages
+                }
+            },
+            onError = { error ->
+                isChatLoading.value = false
+                showToast("Chat error: $error")
+            }
+        )
     }
 
-    suspend fun reloadConfig(): ActionResponse {
-        val result = api.reloadConfig()
-        showToast(result.message)
-        if (result.ok) refreshAll()
-        return result
+    fun clearChat() {
+        chatMessages.value = emptyList()
+    }
+
+    // Logs filter
+    fun setLogLevelFilter(level: String) {
+        logLevelFilter.value = level
+        scope.launch { refreshCurrentScreen() }
+    }
+
+    fun setLogMsgFilter(msg: String) {
+        logMsgFilter.value = msg
+    }
+
+    fun searchLogs() {
+        scope.launch { refreshCurrentScreen() }
     }
 
     fun destroy() {
-        pollJob?.cancel()
+        api.close()
         scope.cancel()
     }
 }
-
-enum class Screen(val label: String, val icon: String) {
-    Overview("总览", "📊"),
-    Tokens("令牌", "🔑"),
-    Models("模型", "🤖"),
-    Traces("追踪", "🔍"),
-    Playground("测试", "💬"),
-    Config("配置", "⚙️"),
-    Setup("部署", "📋"),
-    Logs("日志", "📝"),
-    Metrics("指标", "📈")
-}
-
-data class LogFilter(
-    val level: String = "",
-    val message: String = ""
-)

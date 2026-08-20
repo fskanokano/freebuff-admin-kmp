@@ -4,21 +4,21 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.freebuff.admin.api.ConnectionState
 import com.freebuff.admin.ui.components.*
 import com.freebuff.admin.ui.screens.*
-import com.freebuff.admin.ui.theme.AppColors
-import com.freebuff.admin.ui.theme.AppTheme
-import com.freebuff.admin.ui.theme.FreebuffTheme
+import com.freebuff.admin.ui.theme.*
 import kotlinx.coroutines.launch
 
 @Composable
@@ -39,7 +39,7 @@ fun App(viewModel: AppViewModel) {
                         viewModel.scope.launch {
                             val success = viewModel.login(host, port, password)
                             if (!success) {
-                                loginError = "连接失败，请检查地址和密码"
+                                loginError = "Connection failed, check address and token"
                             }
                         }
                     },
@@ -71,10 +71,26 @@ fun App(viewModel: AppViewModel) {
                 )
             }
         }
+
+        // Toast
+        toastMessage?.let { msg ->
+            Snackbar(
+                modifier = Modifier.padding(16.dp),
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                shape = RoundedCornerShape(12.dp),
+                action = {
+                    TextButton(onClick = { viewModel.toastMessage.value = null }) {
+                        Text("OK", color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            ) {
+                Text(msg)
+            }
+        }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainContent(
     viewModel: AppViewModel,
@@ -83,170 +99,118 @@ private fun MainContent(
     toastMessage: String?
 ) {
     val colors = AppTheme.colors()
-    val scope = rememberCoroutineScope()
-
-    // Data states
-    val overview by viewModel.overview.collectAsState()
-    val tokens by viewModel.tokens.collectAsState()
-    val models by viewModel.models.collectAsState()
-    val traces by viewModel.traces.collectAsState()
-    val logs by viewModel.logs.collectAsState()
-    val metrics by viewModel.metrics.collectAsState()
-    val setup by viewModel.setup.collectAsState()
-    val config by viewModel.config.collectAsState()
-    val version by viewModel.version.collectAsState()
-    val logFilter by viewModel.logFilter.collectAsState()
-
-    var configSaving by remember { mutableStateOf(false) }
 
     Scaffold(
+        containerColor = colors.background,
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("🚀", fontSize = 20.sp)
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text(
-                                text = "Freebuff Proxy",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                color = colors.onSurface
-                            )
-                            if (version.current_version.isNotEmpty()) {
-                                Text(
-                                    text = "v${version.current_version}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = colors.mutedForeground
-                                )
-                            }
-                        }
-                    }
-                },
-                actions = {
-                    // Update badge
-                    if (version.has_update) {
-                        StatusBadge(
-                            text = "v${version.latest_version}",
-                            color = AppColors.Amber
+            Surface(
+                color = colors.surface,
+                tonalElevation = 0.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Freebuff Proxy",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.5).sp
+                        ),
+                        color = colors.onSurface
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // Refresh button
+                    IconButton(onClick = { viewModel.refreshCurrentScreen() }) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            tint = colors.onSurface
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
                     }
 
-                    // Logout
-                    TextButton(
-                        onClick = {
-                            scope.launch { viewModel.logout() }
-                        }
-                    ) {
-                        Text(
-                            "退出",
-                            color = colors.destructive,
-                            style = MaterialTheme.typography.bodySmall
+                    // Logout button
+                    IconButton(onClick = { viewModel.logout() }) {
+                        Icon(
+                            Icons.Default.Logout,
+                            contentDescription = "Logout",
+                            tint = colors.onSurface
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = colors.background
-                )
-            )
+                }
+            }
         },
         bottomBar = {
             NavigationBar(
                 containerColor = colors.surface,
                 tonalElevation = 0.dp
             ) {
-                Screen.entries.take(5).forEach { screen ->
+                val items = listOf(
+                    ScreenData(Screen.Overview, "Overview", Icons.Default.Dashboard),
+                    ScreenData(Screen.Tokens, "Tokens", Icons.Default.Key),
+                    ScreenData(Screen.Models, "Models", Icons.Default.SmartToy),
+                    ScreenData(Screen.Traces, "Traces", Icons.Default.Speed),
+                    ScreenData(Screen.Setup, "Setup", Icons.Default.Settings),
+                )
+                items.forEach { item ->
                     NavigationBarItem(
-                        icon = { Text(screen.icon, fontSize = 18.sp) },
-                        label = {
-                            Text(
-                                screen.label,
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        },
-                        selected = currentScreen == screen,
-                        onClick = { viewModel.navigateTo(screen) },
+                        selected = currentScreen == item.screen,
+                        onClick = { viewModel.navigateTo(item.screen) },
+                        icon = { Icon(item.icon, contentDescription = item.label) },
+                        label = { Text(item.label, fontSize = 10.sp) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = colors.primary,
                             selectedTextColor = colors.primary,
                             unselectedIconColor = colors.mutedForeground,
                             unselectedTextColor = colors.mutedForeground,
-                            indicatorColor = colors.primary.copy(alpha = 0.1f)
+                            indicatorColor = colors.primary.copy(alpha = 0.12f)
                         )
                     )
                 }
             }
-        },
-        containerColor = colors.background
-    ) { paddingValues ->
+        }
+    ) { padding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(padding)
         ) {
             when (currentScreen) {
-                Screen.Overview -> OverviewScreen(
-                    data = overview,
-                    onSmokeTest = {
-                        scope.launch {
-                            viewModel.runSmoke(setup.model.ifEmpty { "deepseek/deepseek-v4-flash" }, "Say hello in one word")
-                        }
-                    }
-                )
-                Screen.Tokens -> TokensScreen(
-                    data = tokens,
-                    onTestToken = { scope.launch { viewModel.testToken(it) } },
-                    onTestAll = { scope.launch { viewModel.testAllTokens() } },
-                    onUnlockToken = { scope.launch { viewModel.unlockToken(it) } },
-                    onFinishToken = { scope.launch { viewModel.finishToken(it) } },
-                    onAddToken = { /* Dialog handled in screen */ },
-                    onRemoveToken = { scope.launch { viewModel.removeToken(it.toString()) } },
-                    onSwitchMode = { scope.launch { viewModel.switchMode(it) } }
-                )
-                Screen.Models -> ModelsScreen(data = models)
-                Screen.Traces -> TracesScreen(data = traces)
-                Screen.Playground -> PlaygroundScreen(
-                    setupData = setup,
-                    onSend = { model, prompt ->
-                        scope.launch {
-                            viewModel.runSmoke(model, prompt)
-                        }
-                    },
-                    isLoading = isLoading
-                )
-                Screen.Config -> ConfigScreen(
-                    data = config,
-                    onSave = { cfg ->
-                        scope.launch {
-                            configSaving = true
-                            viewModel.saveConfig(cfg)
-                            configSaving = false
-                        }
-                    },
-                    onReload = { scope.launch { viewModel.reloadConfig() } },
-                    isSaving = configSaving
-                )
-                Screen.Setup -> SetupScreen(data = setup)
-                Screen.Logs -> LogsScreen(
-                    data = logs,
-                    filter = logFilter,
-                    onFilterChange = { viewModel.updateLogFilter(it) }
-                )
-                Screen.Metrics -> MetricsScreen(data = metrics)
+                Screen.Overview -> OverviewScreen(viewModel)
+                Screen.Tokens -> TokensScreen(viewModel)
+                Screen.Models -> ModelsScreen(viewModel)
+                Screen.Traces -> TracesScreen(viewModel)
+                Screen.Setup -> SetupScreen(viewModel)
+                Screen.Playground -> PlaygroundScreen(viewModel)
+                Screen.Config -> ConfigScreen(viewModel)
+                Screen.Logs -> LogsScreen(viewModel)
+                Screen.Metrics -> MetricsScreen(viewModel)
             }
 
             // Loading overlay
-            if (isLoading && currentScreen != Screen.Overview) {
-                LoadingOverlay(colors)
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(colors.background.copy(alpha = 0.6f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = colors.primary,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
             }
         }
     }
-
-    // Toast
-    Toast(
-        message = toastMessage ?: "",
-        onDismiss = { viewModel.dismissToast() }
-    )
 }
+
+private data class ScreenData(
+    val screen: Screen,
+    val label: String,
+    val icon: ImageVector
+)

@@ -295,7 +295,7 @@ class AdminApi {
 
     val connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
 
-    private fun ensureClient(followRedirects: Boolean = true): HttpClient {
+    private fun ensureClient(): HttpClient {
         if (client == null) {
             client = HttpClient(OkHttp) {
                 install(ContentNegotiation) {
@@ -309,7 +309,7 @@ class AdminApi {
                     requestTimeoutMillis = 30000
                     connectTimeoutMillis = 10000
                 }
-                followRedirects = followRedirects
+                followRedirects = false
                 expectSuccess = false
             }
         }
@@ -321,17 +321,14 @@ class AdminApi {
     suspend fun login(serverUrl: String, password: String): Boolean {
         baseUrl = serverUrl.trimEnd('/')
         adminToken = password
-        // Don't follow redirects so we can capture Set-Cookie from the 302
-        val c = ensureClient(followRedirects = false)
+        val c = ensureClient()
         return try {
             val response = c.submitForm(
                 url = "$baseUrl/admin/login",
                 formParameters = parameters {
                     append("token", password)
                 }
-            ) {
-                followRedirects = false
-            }
+            )
             val setCookie = response.headers["Set-Cookie"]
             if (setCookie != null) {
                 sessionCookie = setCookie.substringBefore(";")

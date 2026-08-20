@@ -226,7 +226,7 @@ private fun TrendRow(
             val icon = when (trend) {
                 "up" -> "↑"
                 "down" -> "↓"
-                else → "→"
+                else -> "→"
             }
             val color = when (trend) {
                 "up" -> AppColors.Green

@@ -51,13 +51,13 @@ fun ModelsScreen(viewModel: AppViewModel) {
         if (d.aliases.isNotEmpty()) {
             item {
                 GroupSection(title = "Aliases (${d.aliases.size})", colors = colors) {
-                    d.aliases.forEachIndexed { idx, (alias, target) ->
+                    d.aliases.entries.forEachIndexed { idx, entry ->
                         GroupRow(
-                            label = alias,
+                            label = entry.key,
                             colors = colors,
                             trailing = {
                                 Text(
-                                    text = "-> $target",
+                                    text = "-> ${entry.value}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colors.mutedForeground
                                 )
@@ -72,13 +72,13 @@ fun ModelsScreen(viewModel: AppViewModel) {
         if (d.agent_models.isNotEmpty()) {
             item {
                 GroupSection(title = "Agent Models (${d.agent_models.size})", colors = colors) {
-                    d.agent_models.forEachIndexed { idx, (agent, model) ->
+                    d.agent_models.entries.forEachIndexed { idx, entry ->
                         GroupRow(
-                            label = agent,
+                            label = entry.key,
                             colors = colors,
                             trailing = {
                                 Text(
-                                    text = "-> $model",
+                                    text = "-> ${entry.value}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colors.primary
                                 )

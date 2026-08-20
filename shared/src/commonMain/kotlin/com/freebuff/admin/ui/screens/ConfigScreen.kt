@@ -135,7 +135,7 @@ fun ConfigScreen(viewModel: AppViewModel) {
                                 color = colors.mutedForeground
                             )
                         }
-                        if (idx < d.effective.lastIndex) {
+                        if (idx < d.effective.size - 1) {
                             HorizontalDivider(
                                 modifier = Modifier.padding(horizontal = 16.dp),
                                 color = colors.border

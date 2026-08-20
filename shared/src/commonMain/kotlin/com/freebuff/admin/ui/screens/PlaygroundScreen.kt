@@ -66,7 +66,7 @@ fun PlaygroundScreen(viewModel: AppViewModel) {
                             DropdownMenuItem(
                                 text = { Text(model) },
                                 onClick = {
-                                    viewModel.selectedModel.value = model
+                                    viewModel.setSelectedModel(model)
                                     expanded = false
                                 }
                             )

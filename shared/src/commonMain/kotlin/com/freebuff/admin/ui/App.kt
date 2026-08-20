@@ -134,12 +134,8 @@ private fun MainContent(
                     }
 
                     // Logout button
-                    IconButton(onClick = { viewModel.logout() }) {
-                        Icon(
-                            Icons.Default.Logout,
-                            contentDescription = "Logout",
-                            tint = colors.onSurface
-                        )
+                    TextButton(onClick = { viewModel.logout() }) {
+                        Text("Exit", color = colors.onSurface)
                     }
                 }
             }
@@ -150,10 +146,10 @@ private fun MainContent(
                 tonalElevation = 0.dp
             ) {
                 val items = listOf(
-                    ScreenData(Screen.Overview, "Overview", Icons.Default.Dashboard),
-                    ScreenData(Screen.Tokens, "Tokens", Icons.Default.Key),
-                    ScreenData(Screen.Models, "Models", Icons.Default.SmartToy),
-                    ScreenData(Screen.Traces, "Traces", Icons.Default.Speed),
+                    ScreenData(Screen.Overview, "Overview", Icons.Default.Home),
+                    ScreenData(Screen.Tokens, "Tokens", Icons.Default.List),
+                    ScreenData(Screen.Models, "Models", Icons.Default.Build),
+                    ScreenData(Screen.Traces, "Traces", Icons.Default.Search),
                     ScreenData(Screen.Setup, "Setup", Icons.Default.Settings),
                 )
                 items.forEach { item ->

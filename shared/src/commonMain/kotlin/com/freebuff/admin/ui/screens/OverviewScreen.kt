@@ -75,14 +75,14 @@ fun OverviewScreen(viewModel: AppViewModel) {
                 StatCard(
                     label = "Tokens",
                     value = "${d.tokens.size}",
-                    icon = Icons.Default.Key,
+                    icon = Icons.Default.List,
                     iconColor = AppColors.Blue,
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
                     label = "Models",
                     value = "${d.model_count}",
-                    icon = Icons.Default.SmartToy,
+                    icon = Icons.Default.Build,
                     iconColor = AppColors.Green,
                     modifier = Modifier.weight(1f)
                 )
@@ -97,7 +97,7 @@ fun OverviewScreen(viewModel: AppViewModel) {
                 StatCard(
                     label = "Daily Limit",
                     value = "${d.max_messages_per_day}",
-                    icon = Icons.Default.Speed,
+                    icon = Icons.Default.DateRange,
                     iconColor = AppColors.Amber,
                     modifier = Modifier.weight(1f)
                 )

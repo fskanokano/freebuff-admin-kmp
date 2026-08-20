@@ -12,8 +12,8 @@ import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.serialization.json.*
-import kotlinx.serialization.json.*
+import io.ktor.utils.io.*
+import io.ktor.utils.io.core.*
 
 // --- Auth state ---
 
@@ -543,29 +543,25 @@ class AdminApi {
 
                 val reader = response.bodyAsChannel()
                 val buffer = StringBuilder()
-                while (true) {
+                while (!reader.isClosedForRead) {
                     val line = reader.readUTF8Line() ?: break
-                    buffer.append(line)
-                    if (line.isEmpty()) {
-                        // Process buffered SSE event
+                    val trimmed = line.trim()
+                    if (trimmed.isEmpty()) {
                         val data = buffer.toString().trim()
                         buffer.clear()
                         if (data.startsWith("data: ")) {
                             val payload = data.removePrefix("data: ")
-                            if (payload == "[DONE]") {
-                                onDone()
-                                return@launch
-                            }
+                            if (payload == "[DONE]") { onDone(); return@launch }
                             try {
                                 val obj = json.parseToJsonElement(payload) as? JsonObject
                                 val choices = obj?.get("choices") as? JsonArray
                                 val delta = choices?.firstOrNull()?.jsonObject?.get("delta")?.jsonObject
                                 val content = delta?.get("content")?.jsonPrimitive?.contentOrNull
-                                if (content != null) {
-                                    onChunk(content)
-                                }
+                                if (content != null) onChunk(content)
                             } catch (_: Exception) {}
                         }
+                    } else {
+                        buffer.appendLine(trimmed)
                     }
                 }
                 onDone()
@@ -574,8 +570,6 @@ class AdminApi {
             }
         }
     }
-
-    private val kotlinx.coroutines.CoroutineScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default)
 
     fun close() {
         client?.close()

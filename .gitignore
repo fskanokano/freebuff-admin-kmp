@@ -1,0 +1,32 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+*.hprof
+*.lock
+.local/
+*.kotlin_metadata
+
+# Android
+androidApp/build/
+local.properties
+*.apk
+*.aab
+
+# KMP
+shared/build/
+desktop/build/
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*~

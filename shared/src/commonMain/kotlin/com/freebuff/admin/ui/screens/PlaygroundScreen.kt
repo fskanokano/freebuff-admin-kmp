@@ -23,7 +23,8 @@ import com.freebuff.admin.ui.theme.*
 fun PlaygroundScreen(viewModel: AppViewModel) {
     val chatMessages by viewModel.chatMessages.collectAsState()
     val isChatLoading by viewModel.chatLoading.collectAsState()
-    val availableModels by viewModel.models.collectAsState()
+    val modelsData by viewModel.models.collectAsState()
+    val availableModels = modelsData?.models ?: emptyList()
     val selectedModel by viewModel.selectedModel.collectAsState()
     val colors = AppTheme.colors()
     var inputText by remember { mutableStateOf("") }
@@ -106,7 +107,7 @@ fun PlaygroundScreen(viewModel: AppViewModel) {
                             text = msg.content,
                             modifier = Modifier.padding(12.dp),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (msg.role == "user") colors.onPrimary else colors.onSurface
+                            color = colors.surface,
                         )
                     }
                 }

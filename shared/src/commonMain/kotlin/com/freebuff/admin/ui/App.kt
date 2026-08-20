@@ -33,10 +33,10 @@ fun App(viewModel: AppViewModel) {
         when (connectionState) {
             is ConnectionState.Disconnected -> {
                 LoginScreen(
-                    onLogin = { host, port, password ->
+                    onLogin = { serverUrl, password ->
                         loginError = null
                         scope.launch {
-                            val success = viewModel.login(host, port, password)
+                            val success = viewModel.login(serverUrl, password)
                             if (!success) {
                                 loginError = "连接失败，请检查地址和密码"
                             }

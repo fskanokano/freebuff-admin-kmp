@@ -105,9 +105,9 @@ class AppViewModel {
 
     // ── Auth ──
 
-    suspend fun login(host: String, port: Int, password: String): Boolean {
+    suspend fun login(serverUrl: String, password: String): Boolean {
         _isLoading.value = true
-        val result = api.login(host, port, password)
+        val result = api.login(serverUrl, password)
         _isLoading.value = false
         if (result) {
             _currentScreen.value = Screen.Overview

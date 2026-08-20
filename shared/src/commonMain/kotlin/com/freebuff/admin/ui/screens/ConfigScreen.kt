@@ -6,16 +6,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.freebuff.admin.ui.AppViewModel
-import com.freebuff.admin.ui.components.*
 import com.freebuff.admin.ui.theme.*
 
 @Composable
 fun ConfigScreen(viewModel: AppViewModel) {
-    val data by viewModel.configData.collectAsState()
+    val data by viewModel.config.collectAsState()
     val colors = AppTheme.colors()
     var editContent by remember { mutableStateOf("") }
     var isEditing by remember { mutableStateOf(false) }
@@ -29,100 +29,119 @@ fun ConfigScreen(viewModel: AppViewModel) {
 
     val d = data!!
 
-    // Sync content when data loads
     LaunchedEffect(d.env_content) {
         if (!isEditing) {
             editContent = d.env_content
         }
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        // Actions
+    Column(modifier = Modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            GlassButton("Reload", onClick = { viewModel.reloadConfig() })
+            OutlinedButton(onClick = { viewModel.reloadConfig() }) {
+                Text("Reload")
+            }
             Spacer(modifier = Modifier.weight(1f))
             if (isEditing) {
-                GlassButton("Cancel", onClick = {
+                OutlinedButton(onClick = {
                     isEditing = false
                     editContent = d.env_content
-                })
-                GlassButton("Save", onClick = {
+                }) { Text("Cancel") }
+                Button(onClick = {
                     viewModel.saveConfig(editContent)
                     isEditing = false
-                })
+                }) { Text("Save") }
             } else {
-                GlassButton("Edit", onClick = { isEditing = true })
+                Button(onClick = { isEditing = true }) { Text("Edit") }
             }
         }
 
-        // .env content editor
-        GroupSection(title = ".env Configuration", colors = colors) {
+        Text(
+            text = ".env Configuration",
+            modifier = Modifier.padding(horizontal = 16.dp),
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = colors.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Surface(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            color = colors.card
+        ) {
             if (isEditing) {
                 OutlinedTextField(
                     value = editContent,
                     onValueChange = { editContent = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 300.dp)
-                        .padding(12.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 300.dp).padding(12.dp),
                     shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = colors.inputBorder,
+                        unfocusedBorderColor = colors.border,
                         focusedBorderColor = colors.primary,
                         cursorColor = colors.primary,
                         focusedTextColor = colors.onSurface,
                         unfocusedTextColor = colors.onSurface
                     ),
                     textStyle = MaterialTheme.typography.bodySmall.copy(
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        fontFamily = FontFamily.Monospace
                     )
                 )
             } else {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    color = colors.surfaceVariant
-                ) {
-                    Text(
-                        text = d.env_content.ifEmpty { "(no .env file)" },
-                        modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                            lineHeight = 18.sp
-                        ),
-                        color = colors.onSurface
-                    )
-                }
+                Text(
+                    text = d.env_content.ifEmpty { "(empty)" },
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        lineHeight = 18.sp
+                    ),
+                    color = colors.onSurface
+                )
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Effective config
         if (d.effective.isNotEmpty()) {
-            GroupSection(title = "Effective Configuration", colors = colors) {
-                d.effective.forEachIndexed { idx, kv ->
-                    GroupRow(
-                        label = kv.key,
-                        colors = colors,
-                        trailing = {
+            Text(
+                text = "Effective Config",
+                modifier = Modifier.padding(horizontal = 16.dp),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = colors.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = colors.card
+            ) {
+                Column {
+                    d.effective.entries.forEachIndexed { idx, (key, value) ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                text = if (kv.secret) "***" else kv.value,
-                                style = MaterialTheme.typography.bodySmall,
+                                text = key,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                color = colors.onSurface
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            Text(
+                                text = value,
+                                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                                 color = colors.mutedForeground
                             )
                         }
-                    )
-                    if (idx < d.effective.lastIndex) AppDivider()
+                        if (idx < d.effective.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                                color = colors.border
+                            )
+                        }
+                    }
                 }
             }
         }

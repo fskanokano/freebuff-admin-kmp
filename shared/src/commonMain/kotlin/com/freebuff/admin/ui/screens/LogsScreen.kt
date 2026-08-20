@@ -1,26 +1,27 @@
 package com.freebuff.admin.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.freebuff.admin.ui.AppViewModel
 import com.freebuff.admin.ui.components.*
 import com.freebuff.admin.ui.theme.*
 
 @Composable
 fun LogsScreen(viewModel: AppViewModel) {
-    val data by viewModel.logsData.collectAsState()
+    val data by viewModel.logs.collectAsState()
     val colors = AppTheme.colors()
     var searchQuery by remember { mutableStateOf("") }
-    var expandedIdx by remember { mutableStateOf(-1) }
+    var filterLevel by remember { mutableStateOf("") }
+    var expandedId by remember { mutableStateOf(-1) }
 
     if (data == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -30,17 +31,18 @@ fun LogsScreen(viewModel: AppViewModel) {
     }
 
     val d = data!!
+    val filtered = d.entries.filter { entry ->
+        val matchLevel = filterLevel.isEmpty() || entry.level == filterLevel
+        val matchSearch = searchQuery.isEmpty() ||
+            entry.msg.contains(searchQuery, ignoreCase = true) ||
+            entry.request_id.contains(searchQuery, ignoreCase = true)
+        matchLevel && matchSearch
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Search bar
-        Surface(
-            color = colors.surface,
-            tonalElevation = 0.dp
-        ) {
+        Surface(color = colors.surface, tonalElevation = 0.dp) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -48,8 +50,7 @@ fun LogsScreen(viewModel: AppViewModel) {
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Search logs...", color = colors.mutedForeground) },
-                    shape = RoundedCornerShape(10.dp),
+                    placeholder = { Text("Search...", color = colors.mutedForeground) },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedBorderColor = colors.inputBorder,
@@ -61,93 +62,71 @@ fun LogsScreen(viewModel: AppViewModel) {
                         unfocusedTextColor = colors.onSurface
                     )
                 )
-                GlassButton("Search", onClick = {
-                    viewModel.setLogMsgFilter(searchQuery)
-                    viewModel.searchLogs()
-                })
             }
         }
 
-        // Level filters
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            val levels = listOf("" to "All", "info" to "INFO", "warn" to "WARN", "error" to "ERROR", "debug" to "DEBUG")
-            levels.forEach { (level, label) ->
-                val selected = d.level == level || (level.isEmpty() && d.level.isEmpty())
+            listOf("" to "All", "info" to "INFO", "warn" to "WARN", "error" to "ERROR", "debug" to "DEBUG").forEach { (level, label) ->
                 PillButton(
                     text = label,
-                    selected = selected,
-                    onClick = { viewModel.setLogLevelFilter(level) }
+                    selected = filterLevel == level,
+                    onClick = { filterLevel = level }
                 )
             }
         }
 
-        // Log entries
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            items(d.entries.size) { idx ->
-                val entry = d.entries[idx]
-                val isExpanded = expandedIdx == idx
+            items(filtered.size) { idx ->
+                val entry = filtered[idx]
+                val isExpanded = expandedId == idx
 
-                AppCard(colors = colors) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp)
-                    ) {
+                AppCard(modifier = Modifier.clickable {
+                    expandedId = if (isExpanded) -1 else idx
+                }, colors = colors) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             StatusBadge(
-                                text = entry.level,
+                                text = entry.level.uppercase(),
                                 color = when (entry.level) {
                                     "info" -> AppColors.Blue
                                     "warn" -> AppColors.Orange
                                     "error" -> AppColors.Red
-                                    "debug" -> AppColors.Gray50
+                                    "debug" -> AppColors.Gray500
                                     else -> colors.mutedForeground
                                 }
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = entry.message,
+                                text = entry.msg,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colors.onSurface,
                                 modifier = Modifier.weight(1f)
                             )
                         }
-
                         Text(
                             text = entry.time,
                             style = MaterialTheme.typography.labelSmall,
                             color = colors.mutedForeground
                         )
-
-                        // Expanded details
-                        if (isExpanded && entry.fields.isNotEmpty()) {
+                        if (isExpanded) {
                             Spacer(modifier = Modifier.height(8.dp))
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = colors.surfaceVariant
-                            ) {
-                                Text(
-                                    text = entry.fields,
-                                    modifier = Modifier.padding(8.dp),
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                        lineHeight = 14.sp
-                                    ),
-                                    color = colors.onSurface
-                                )
-                            }
+                            Text(
+                                text = "request_id: ${entry.request_id}",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = FontFamily.Monospace
+                                ),
+                                color = colors.mutedForeground
+                            )
                         }
                     }
                 }

@@ -32,7 +32,7 @@ fun AppCard(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = colors.card),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, colors.borderSubtle),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, colors.border),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         content = content
     )
@@ -174,7 +174,7 @@ fun GlassButton(
     colors: AppThemeColors = AppTheme.colors()
 ) {
     val bgColor = when {
-        !enabled -> colors.surfaceVariant
+        !enabled -> colors.border
         destructive -> AppColors.Red
         else -> colors.primary
     }
@@ -187,7 +187,7 @@ fun GlassButton(
         colors = ButtonDefaults.buttonColors(
             containerColor = bgColor,
             contentColor = Color.White,
-            disabledContainerColor = colors.surfaceVariant,
+            disabledContainerColor = colors.border,
             disabledContentColor = colors.mutedForeground
         ),
         contentPadding = PaddingValues(horizontal = 20.dp)
@@ -211,7 +211,7 @@ fun PillButton(
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(if (selected) colors.primary else colors.surfaceVariant)
+            .background(if (selected) colors.primary else colors.border)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
@@ -235,7 +235,7 @@ fun AppDivider(
     HorizontalDivider(
         modifier = modifier.padding(horizontal = 16.dp),
         thickness = 0.5.dp,
-        color = colors.borderSubtle
+        color = colors.border
     )
 }
 

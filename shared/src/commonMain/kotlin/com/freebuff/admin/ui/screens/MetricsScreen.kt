@@ -10,117 +10,103 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.freebuff.admin.ui.AppViewModel
-import com.freebuff.admin.ui.components.AppCard
-import com.freebuff.admin.ui.theme.AppTheme
+import com.freebuff.admin.ui.components.*
+import com.freebuff.admin.ui.theme.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+private fun fmt1(v: Double): String {
+    val r = kotlin.math.round(v * 10) / 10
+    return r.toString()
+}
+
+private fun fmt0(v: Double): String {
+    return kotlin.math.round(v).toLong().toString()
+}
+
 @Composable
 fun MetricsScreen(viewModel: AppViewModel) {
-    val metrics by viewModel.metrics.collectAsState()
+    val data by viewModel.metrics.collectAsState()
     val colors = AppTheme.colors()
 
-    LaunchedEffect(Unit) { viewModel.refresh() }
+    if (data == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = colors.primary)
+        }
+        return
+    }
+
+    val d = data!!
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(
-                text = "Metrics",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = colors.onSurface
-            )
+            GroupSection(title = "Overview", colors = colors) {
+                MetricRow("Uptime", "${d.uptime_seconds / 3600}h ${(d.uptime_seconds % 3600) / 60}m")
+                MetricRow("Total Requests", "${d.total_requests}")
+                MetricRow("Requests/min", fmt1(d.requests_per_minute))
+                MetricRow("Error Rate", fmt1(d.error_rate * 100) + "%")
+                MetricRow("Avg Latency", fmt0(d.avg_latency_ms) + "ms")
+                MetricRow("P50 Latency", fmt0(d.p50_latency_ms) + "ms")
+                MetricRow("P90 Latency", fmt0(d.p90_latency_ms) + "ms")
+                MetricRow("P99 Latency", fmt0(d.p99_latency_ms) + "ms")
+            }
         }
 
-        metrics?.let { data ->
+        item {
+            GroupSection(title = "Errors", colors = colors) {
+                MetricRow("Total Retries", "${d.total_retries}")
+                MetricRow("Retry Rate", fmt1(d.retry_rate * 100) + "%")
+                MetricRow("Rate Limited", "${d.rate_limited_count}")
+                MetricRow("Credit Exhausted", "${d.credit_exhausted_count}")
+                MetricRow("TLS Errors", "${d.tls_error_count}")
+                MetricRow("DNS Errors", "${d.dns_error_count}")
+                MetricRow("Connection Errors", "${d.connection_error_count}")
+            }
+        }
+
+        if (d.model_stats.isNotEmpty()) {
             item {
-                AppCard(colors = colors) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Overview", style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
-                        Spacer(Modifier.height(8.dp))
-                        MetricRow("Uptime", "${data.uptime_seconds / 3600}h ${(data.uptime_seconds % 3600) / 60}m")
-                        MetricRow("Total Requests", "${data.total_requests}")
-                        MetricRow("Requests/min", String.format("%.1f", data.requests_per_minute))
-                        MetricRow("Error Rate", String.format("%.2f%%", data.error_rate * 100))
-                        MetricRow("Avg Latency", "${String.format("%.0f", data.avg_latency_ms)}ms")
-                        MetricRow("P50 Latency", "${String.format("%.0f", data.p50_latency_ms)}ms")
-                        MetricRow("P90 Latency", "${String.format("%.0f", data.p90_latency_ms)}ms")
-                        MetricRow("P99 Latency", "${String.format("%.0f", data.p99_latency_ms)}ms")
+                GroupSection(title = "Models", colors = colors) {
+                    d.model_stats.forEach { (model, stat) ->
+                        GroupRow(
+                            label = model,
+                            colors = colors,
+                            trailing = {
+                                Text(
+                                    "${stat.requests} req, ${fmt0(stat.avg_latency_ms)}ms avg",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.mutedForeground
+                                )
+                            }
+                        )
                     }
                 }
             }
+        }
 
+        if (d.token_stats.isNotEmpty()) {
             item {
-                AppCard(colors = colors) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Reliability", style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
-                        Spacer(Modifier.height(8.dp))
-                        MetricRow("Total Retries", "${data.total_retries}")
-                        MetricRow("Retry Rate", String.format("%.2f%%", data.retry_rate * 100))
-                        MetricRow("Rate Limited", "${data.rate_limited_count}")
-                        MetricRow("Credit Exhausted", "${data.credit_exhausted_count}")
-                        MetricRow("TLS Errors", "${data.tls_error_count}")
-                        MetricRow("DNS Errors", "${data.dns_error_count}")
-                        MetricRow("Connection Errors", "${data.connection_error_count}")
-                    }
-                }
-            }
-
-            if (data.model_stats.isNotEmpty()) {
-                item {
-                    AppCard(colors = colors) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Model Stats", style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
-                            Spacer(Modifier.height(8.dp))
-                            data.model_stats.forEach { (model, stat) ->
-                                MetricRow(
-                                    model,
-                                    "${stat.requests} req, ${String.format("%.0f", stat.avg_latency_ms)}ms avg"
+                GroupSection(title = "Tokens", colors = colors) {
+                    d.token_stats.forEach { stat ->
+                        GroupRow(
+                            label = stat.key_hint,
+                            colors = colors,
+                            trailing = {
+                                StatusBadge(
+                                    text = "${stat.requests} req / ${stat.in_flight} active",
+                                    color = when (stat.state) {
+                                        "active" -> AppColors.Green
+                                        "cooldown" -> AppColors.Amber
+                                        else -> AppColors.Gray500
+                                    },
+                                    colors = colors
                                 )
                             }
-                        }
+                        )
                     }
                 }
-            }
-
-            if (data.token_stats.isNotEmpty()) {
-                item {
-                    AppCard(colors = colors) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Token Status", style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
-                            Spacer(Modifier.height(8.dp))
-                            data.token_stats.forEach { token ->
-                                MetricRow(
-                                    token.key_hint,
-                                    "${token.state} - ${token.requests} req, ${token.errors} err, ${token.in_flight} in-flight"
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (data.routes.isNotEmpty()) {
-                item {
-                    AppCard(colors = colors) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Route Stats", style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
-                            Spacer(Modifier.height(8.dp))
-                            data.routes.forEach { route ->
-                                MetricRow(
-                                    "${route.model} -> ${route.provider}",
-                                    "${route.requests} req, ${route.errors} err, ${String.format("%.0f", route.avg_latency_ms)}ms"
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        } ?: item {
-            Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = colors.primary)
             }
         }
     }
@@ -130,10 +116,21 @@ fun MetricsScreen(viewModel: AppViewModel) {
 private fun MetricRow(label: String, value: String) {
     val colors = AppTheme.colors()
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.bodyMedium, color = colors.onSurface, fontWeight = FontWeight.Medium)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+            color = colors.onSurface
+        )
     }
 }

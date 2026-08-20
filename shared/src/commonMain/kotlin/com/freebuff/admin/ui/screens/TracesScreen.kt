@@ -3,22 +3,19 @@ package com.freebuff.admin.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.freebuff.admin.api.*
 import com.freebuff.admin.ui.AppViewModel
 import com.freebuff.admin.ui.components.*
 import com.freebuff.admin.ui.theme.*
 
 @Composable
 fun TracesScreen(viewModel: AppViewModel) {
-    val data by viewModel.tracesData.collectAsState()
+    val data by viewModel.traces.collectAsState()
     val colors = AppTheme.colors()
 
     if (data == null) {
@@ -36,25 +33,24 @@ fun TracesScreen(viewModel: AppViewModel) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatusBadge(
-                    text = if (d.enabled) "Tracing ON" else "Tracing OFF",
-                    color = if (d.enabled) AppColors.Green else AppColors.Gray50
-                )
-                StatusBadge(text = "${d.traces.size} traces", color = colors.mutedForeground)
+            GroupSection(title = "Traces (${d.traces.size})", colors = colors) {
+                // empty header
             }
         }
 
         items(d.traces) { trace ->
             AppCard(colors = colors) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         StatusBadge(
                             text = trace.status,
                             color = when {
-                                trace.status.contains("ok") -> AppColors.Green
-                                trace.status.contains("error") -> AppColors.Red
-                                else -> AppColors.Amber
+                                trace.status.contains("ok", ignoreCase = true) -> AppColors.Green
+                                trace.status.contains("error", ignoreCase = true) -> AppColors.Red
+                                else -> colors.mutedForeground
                             }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -65,54 +61,49 @@ fun TracesScreen(viewModel: AppViewModel) {
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text(
-                            text = trace.ms,
+                            text = "${trace.latency_ms}ms",
                             style = MaterialTheme.typography.bodySmall,
                             color = colors.mutedForeground
                         )
                     }
 
-                    if (trace.token.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
+                    if (trace.provider.isNotEmpty()) {
                         Text(
-                            text = "Token: ${trace.token}",
-                            style = MaterialTheme.typography.bodySmall,
+                            text = "Provider: ${trace.provider}",
+                            style = MaterialTheme.typography.labelSmall,
                             color = colors.mutedForeground
                         )
                     }
 
-                    if (trace.error.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = trace.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = AppColors.Red
-                        )
-                    }
-
-                    if (trace.phases.isNotEmpty()) {
+                    if (trace.stages.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        trace.phases.forEach { phase ->
+                        Text(
+                            text = "Stages:",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = colors.mutedForeground
+                        )
+                        trace.stages.forEach { stage ->
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                modifier = Modifier.padding(start = 8.dp, top = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = phase.name,
+                                    text = "${stage.name}: ${stage.status}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = colors.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                                Text(
+                                    text = "${stage.latency_ms}ms",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = colors.mutedForeground
-                                )
-                                Text(
-                                    text = "${phase.ms}ms",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = colors.onSurface
                                 )
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = trace.time,
+                        text = trace.timestamp,
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.mutedForeground
                     )

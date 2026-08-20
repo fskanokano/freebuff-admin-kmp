@@ -1,7 +1,6 @@
 package com.freebuff.admin.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -10,7 +9,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -28,18 +26,19 @@ fun App(viewModel: AppViewModel) {
         val currentScreen by viewModel.currentScreen.collectAsState()
         val isLoading by viewModel.isLoading.collectAsState()
         val toastMessage by viewModel.toastMessage.collectAsState()
+        val scope = rememberCoroutineScope()
 
         var loginError by remember { mutableStateOf<String?>(null) }
 
-        when (val state = connectionState) {
+        when (connectionState) {
             is ConnectionState.Disconnected -> {
                 LoginScreen(
                     onLogin = { host, port, password ->
                         loginError = null
-                        viewModel.scope.launch {
+                        scope.launch {
                             val success = viewModel.login(host, port, password)
                             if (!success) {
-                                loginError = "Connection failed, check address and token"
+                                loginError = "连接失败，请检查地址和密码"
                             }
                         }
                     },
@@ -55,35 +54,14 @@ fun App(viewModel: AppViewModel) {
                     toastMessage = toastMessage
                 )
             }
-            is ConnectionState.Error -> {
-                LoginScreen(
-                    onLogin = { host, port, password ->
-                        loginError = null
-                        viewModel.scope.launch {
-                            val success = viewModel.login(host, port, password)
-                            if (!success) {
-                                loginError = state.message
-                            }
-                        }
-                    },
-                    isLoading = isLoading,
-                    error = state.message
-                )
-            }
         }
 
-        // Toast
         toastMessage?.let { msg ->
             Snackbar(
                 modifier = Modifier.padding(16.dp),
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                shape = RoundedCornerShape(12.dp),
-                action = {
-                    TextButton(onClick = { viewModel.toastMessage.value = null }) {
-                        Text("OK", color = MaterialTheme.colorScheme.primary)
-                    }
-                }
+                containerColor = AppColors.Gray900,
+                contentColor = AppColors.Surface,
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Text(msg)
             }
@@ -123,17 +101,6 @@ private fun MainContent(
                         color = colors.onSurface
                     )
                     Spacer(modifier = Modifier.weight(1f))
-
-                    // Refresh button
-                    IconButton(onClick = { viewModel.refreshCurrentScreen() }) {
-                        Icon(
-                            Icons.Default.Refresh,
-                            contentDescription = "Refresh",
-                            tint = colors.onSurface
-                        )
-                    }
-
-                    // Logout button
                     TextButton(onClick = { viewModel.logout() }) {
                         Text("Exit", color = colors.onSurface)
                     }
@@ -171,9 +138,7 @@ private fun MainContent(
         }
     ) { padding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+            modifier = Modifier.fillMaxSize().padding(padding)
         ) {
             when (currentScreen) {
                 Screen.Overview -> OverviewScreen(viewModel)
@@ -185,20 +150,15 @@ private fun MainContent(
                 Screen.Config -> ConfigScreen(viewModel)
                 Screen.Logs -> LogsScreen(viewModel)
                 Screen.Metrics -> MetricsScreen(viewModel)
+                Screen.Login -> { /* handled above */ }
             }
 
-            // Loading overlay
             if (isLoading) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(colors.background.copy(alpha = 0.6f)),
+                    modifier = Modifier.fillMaxSize().background(colors.background.copy(alpha = 0.6f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(
-                        color = colors.primary,
-                        modifier = Modifier.size(40.dp)
-                    )
+                    CircularProgressIndicator(color = colors.primary, modifier = Modifier.size(40.dp))
                 }
             }
         }

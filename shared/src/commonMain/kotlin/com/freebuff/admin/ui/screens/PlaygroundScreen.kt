@@ -22,8 +22,8 @@ import com.freebuff.admin.ui.theme.*
 @Composable
 fun PlaygroundScreen(viewModel: AppViewModel) {
     val chatMessages by viewModel.chatMessages.collectAsState()
-    val isChatLoading by viewModel.isChatLoading.collectAsState()
-    val availableModels by viewModel.availableModels.collectAsState()
+    val isChatLoading by viewModel.chatLoading.collectAsState()
+    val availableModels by viewModel.models.collectAsState()
     val selectedModel by viewModel.selectedModel.collectAsState()
     val colors = AppTheme.colors()
     var inputText by remember { mutableStateOf("") }
@@ -166,7 +166,7 @@ fun PlaygroundScreen(viewModel: AppViewModel) {
                 )
                 IconButton(
                     onClick = {
-                        viewModel.sendChatMessage(inputText)
+                        viewModel.sendChat(inputText)
                         inputText = ""
                     },
                     enabled = inputText.isNotBlank() && !isChatLoading

@@ -53,8 +53,8 @@ class AppViewModel {
     private val _version = MutableStateFlow<VersionData?>(null)
     val version: StateFlow<VersionData?> = _version
 
-    private val _smokeResult = MutableStateFlow<JsonObject?>(null)
-    val smokeResult: StateFlow<JsonObject?> = _smokeResult
+    private val _smokeResult = MutableStateFlow<String?>(null)
+    val smokeResult: StateFlow<String?> = _smokeResult
 
     private val _chatMessages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val chatMessages: StateFlow<List<ChatMessage>> = _chatMessages
@@ -162,7 +162,8 @@ class AppViewModel {
     fun runSmokeTest(model: String, prompt: String) {
         scope.launch {
             try {
-                _smokeResult.value = api.smokeTest(model, prompt, false)
+                val result = api.smokeTest(model, prompt, false)
+                _smokeResult.value = result.toString()
             } catch (e: Exception) {
                 _toastMessage.value = "Smoke test failed: ${e.message}"
             }
@@ -208,6 +209,5 @@ class AppViewModel {
 
     fun destroy() {
         api.close()
-        scope.cancel()
     }
 }

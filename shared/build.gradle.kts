@@ -33,7 +33,7 @@ kotlin {
             implementation("io.ktor:ktor-client-content-negotiation:3.0.3")
             implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.3")
             implementation("io.ktor:ktor-client-websockets:3.0.3")
-            implementation("org.jetbrains.compose.resources:resources:1.7.1")
+            implementation("org.jetbrains.compose.components:components-resources:1.7.1")
         }
         androidMain.dependencies {
             implementation("io.ktor:ktor-client-android:3.0.3")

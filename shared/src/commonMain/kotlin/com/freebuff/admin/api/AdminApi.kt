@@ -303,7 +303,9 @@ class AdminApi {
     fun getSessionCookie(): String = sessionCookie
 
     private fun HttpRequestBuilder.adminCookie() {
-        // Cookie jar handles this automatically via OkHttp engine
+        if (sessionCookie.isNotEmpty()) {
+            header("Cookie", sessionCookie)
+        }
     }
 
     // ── GET ──

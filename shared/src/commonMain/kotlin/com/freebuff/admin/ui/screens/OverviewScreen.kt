@@ -3,8 +3,6 @@ package com.freebuff.admin.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,35 +32,71 @@ fun OverviewScreen(viewModel: AppViewModel) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Health status
+        // Service health header
         item {
-            AppCard(colors = colors) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    StatusBadge(
-                        text = if (d.healthy) "Healthy" else "Down",
-                        color = if (d.healthy) AppColors.Green else AppColors.Red
-                    )
+            GroupSection(title = "Service Health", colors = colors) {
+                Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Mode:", style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(
+                    StatusBadge(
                         text = d.mode.uppercase(),
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = AppColors.Blue
+                        color = if (d.in_bridge) AppColors.Purple else AppColors.Blue
                     )
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text(
-                        text = "v${d.version}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.mutedForeground
-                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Version:", style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(d.uptime, style = MaterialTheme.typography.bodyMedium, color = colors.onSurface)
                 }
-                if (d.uptime.isNotEmpty()) {
+                if (d.safe_mode) {
+                    Row(modifier = Modifier.padding(start = 16.dp, bottom = 12.dp)) {
+                        StatusBadge(text = "Safe Mode ON", color = AppColors.Orange)
+                    }
+                }
+            }
+        }
+
+        // Token pool
+        item {
+            GroupSection(title = "Token Pool", colors = colors) {
+                if (d.tokens.isEmpty()) {
+                    Text("No tokens", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall, color = colors.mutedForeground)
+                }
+            }
+        }
+
+        items(d.tokens) { token ->
+            AppCard(modifier = Modifier.fillMaxWidth(), colors = colors) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Token ${token.index}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = colors.onSurface)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        StatusBadge(
+                            text = token.session_status.ifEmpty { "idle" },
+                            color = when (token.session_status) {
+                                "active" -> AppColors.Green
+                                "cooldown" -> AppColors.Orange
+                                "error" -> AppColors.Red
+                                else -> colors.mutedForeground
+                            }
+                        )
+                        if (token.cooldown_active) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            StatusBadge(text = "Cooldown", color = AppColors.Orange)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (token.daily_limit > 0) {
+                        LinearProgressIndicator(
+                            progress = { token.usage_pct / 100f },
+                            modifier = Modifier.fillMaxWidth().height(4.dp),
+                            color = when { token.usage_pct >= 90 -> AppColors.Red; token.usage_pct >= 60 -> AppColors.Orange; else -> AppColors.Green },
+                            trackColor = colors.border
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
                     Text(
-                        text = "Uptime: ${d.uptime}",
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
-                        style = MaterialTheme.typography.bodySmall,
+                        "${token.messages_24h} msgs/24h | ${token.requests} requests | ${token.active_runs} active | usage ${token.usage_pct}%",
+                        style = MaterialTheme.typography.labelSmall,
                         color = colors.mutedForeground
                     )
                 }
@@ -71,109 +105,15 @@ fun OverviewScreen(viewModel: AppViewModel) {
 
         // Stats
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatCard(
-                    label = "Total Requests",
-                    value = "${d.total_requests}",
-                    modifier = Modifier.weight(1f),
-                    colors = colors
-                )
-                StatCard(
-                    label = "Active Tokens",
-                    value = "${d.active_tokens}/${d.total_tokens}",
-                    modifier = Modifier.weight(1f),
-                    colors = colors
-                )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatCard(label = "Models", value = "${d.model_count}", modifier = Modifier.weight(1f), colors = colors)
+                StatCard(label = "Max Msgs/Day", value = "${d.max_messages_per_day}", modifier = Modifier.weight(1f), colors = colors)
             }
         }
-
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatCard(
-                    label = "Avg Latency",
-                    value = "${d.avg_latency_ms.toLong()}ms",
-                    modifier = Modifier.weight(1f),
-                    colors = colors
-                )
-                StatCard(
-                    label = "Error Rate",
-                    value = "${d.error_rate * 100}%",
-                    modifier = Modifier.weight(1f),
-                    colors = colors
-                )
-            }
-        }
-
-        // Token status
-        if (d.token_status.isNotEmpty()) {
-            item {
-                GroupSection(title = "Token Pool", colors = colors) {
-                    d.token_status.forEach { ts ->
-                        GroupRow(
-                            label = ts.key_hint,
-                            colors = colors,
-                            trailing = {
-                                StatusBadge(
-                                    text = ts.state,
-                                    color = when (ts.state) {
-                                        "active" -> AppColors.Green
-                                        "idle" -> AppColors.Gray500
-                                        "cooldown" -> AppColors.Orange
-                                        "error" -> AppColors.Red
-                                        else -> colors.mutedForeground
-                                    }
-                                )
-                            }
-                        )
-                    }
-                }
-            }
-        }
-
-        // Recent routes
-        if (d.recent_routes.isNotEmpty()) {
-            item {
-                GroupSection(title = "Recent Routes", colors = colors) {
-                    d.recent_routes.take(5).forEach { route ->
-                        GroupRow(
-                            label = route.model,
-                            colors = colors,
-                            trailing = {
-                                Text(
-                                    text = "${route.latency_ms}ms ${route.status}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = colors.mutedForeground
-                                )
-                            }
-                        )
-                    }
-                }
-            }
-        }
-
-        // Services
-        if (d.services.isNotEmpty()) {
-            item {
-                GroupSection(title = "Services", colors = colors) {
-                    d.services.forEach { svc ->
-                        GroupRow(
-                            label = svc.name,
-                            colors = colors,
-                            trailing = {
-                                StatusBadge(
-                                    text = if (svc.healthy) "OK" else "DOWN",
-                                    color = if (svc.healthy) AppColors.Green else AppColors.Red
-                                )
-                            }
-                        )
-                    }
-                }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatCard(label = "Retries", value = "${d.transient_retries}", modifier = Modifier.weight(1f), colors = colors)
+                StatCard(label = "Fingerprint Rotations", value = "${d.fingerprint_rotations}", modifier = Modifier.weight(1f), colors = colors)
             }
         }
     }

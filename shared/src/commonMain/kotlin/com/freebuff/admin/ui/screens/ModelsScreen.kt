@@ -23,68 +23,27 @@ fun ModelsScreen(viewModel: AppViewModel) {
         }
         return
     }
-
     val d = data!!
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
+    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
-            GroupSection(title = "Models (${d.models.size})", colors = colors) {
+            GroupSection(title = "Models (${d.count}) - ${d.agents} Agents", colors = colors) {
                 d.models.forEachIndexed { idx, model ->
-                    GroupRow(label = model, colors = colors)
+                    GroupRow(label = model.id, colors = colors, trailing = {
+                        if (model.agent.isNotEmpty()) Text(model.agent, style = MaterialTheme.typography.bodySmall, color = colors.primary)
+                    })
                     if (idx < d.models.lastIndex) AppDivider()
                 }
-                if (d.models.isEmpty()) {
-                    Text(
-                        text = "No models configured",
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.mutedForeground
-                    )
-                }
             }
         }
-
-        if (d.aliases.isNotEmpty()) {
+        if (d.has_aliases) {
             item {
                 GroupSection(title = "Aliases (${d.aliases.size})", colors = colors) {
-                    d.aliases.entries.forEachIndexed { idx, entry ->
-                        GroupRow(
-                            label = entry.key,
-                            colors = colors,
-                            trailing = {
-                                Text(
-                                    text = "-> ${entry.value}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = colors.mutedForeground
-                                )
-                            }
-                        )
-                        if (idx < d.aliases.size - 1) AppDivider()
-                    }
-                }
-            }
-        }
-
-        if (d.agent_models.isNotEmpty()) {
-            item {
-                GroupSection(title = "Agent Models (${d.agent_models.size})", colors = colors) {
-                    d.agent_models.entries.forEachIndexed { idx, entry ->
-                        GroupRow(
-                            label = entry.key,
-                            colors = colors,
-                            trailing = {
-                                Text(
-                                    text = "-> ${entry.value}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = colors.primary
-                                )
-                            }
-                        )
-                        if (idx < d.agent_models.size - 1) AppDivider()
+                    d.aliases.forEachIndexed { idx, alias ->
+                        GroupRow(label = alias.alias, colors = colors, trailing = {
+                            Text("-> ${alias.real}", style = MaterialTheme.typography.bodySmall, color = colors.mutedForeground)
+                        })
+                        if (idx < d.aliases.lastIndex) AppDivider()
                     }
                 }
             }

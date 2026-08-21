@@ -24,89 +24,30 @@ fun TracesScreen(viewModel: AppViewModel) {
         }
         return
     }
-
     val d = data!!
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
-            GroupSection(title = "Traces (${d.traces.size})", colors = colors) {
-                // empty header
-            }
+            GroupSection(title = "Traces", colors = colors) {}
         }
-
         items(d.traces) { trace ->
             AppCard(colors = colors) {
-                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        StatusBadge(
-                            text = trace.status,
-                            color = when {
-                                trace.status.contains("ok", ignoreCase = true) -> AppColors.Green
-                                trace.status.contains("error", ignoreCase = true) -> AppColors.Red
-                                else -> colors.mutedForeground
-                            }
-                        )
+                Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        StatusBadge(text = trace.status, color = when (trace.status) { "ok" -> AppColors.Green; "error" -> AppColors.Red; else -> colors.mutedForeground })
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = trace.model,
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                            color = colors.onSurface
-                        )
+                        Text(trace.model, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), color = colors.onSurface)
                         Spacer(modifier = Modifier.weight(1f))
-                        Text(
-                            text = "${trace.latency_ms}ms",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.mutedForeground
-                        )
+                        Text(trace.ms, style = MaterialTheme.typography.bodySmall, color = colors.mutedForeground)
                     }
-
-                    if (trace.provider.isNotEmpty()) {
-                        Text(
-                            text = "Provider: ${trace.provider}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colors.mutedForeground
-                        )
-                    }
-
-                    if (trace.stages.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Stages:",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = colors.mutedForeground
-                        )
-                        trace.stages.forEach { stage ->
-                            Row(
-                                modifier = Modifier.padding(start = 8.dp, top = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "${stage.name}: ${stage.status}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = colors.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.weight(1f))
-                                Text(
-                                    text = "${stage.latency_ms}ms",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = colors.mutedForeground
-                                )
-                            }
+                    if (trace.token.isNotEmpty()) Text("Token: ${trace.token}", style = MaterialTheme.typography.labelSmall, color = colors.mutedForeground)
+                    if (trace.error.isNotEmpty()) Text("Error: ${trace.error}", style = MaterialTheme.typography.labelSmall, color = AppColors.Red)
+                    if (trace.phases.isNotEmpty()) {
+                        trace.phases.forEach { phase ->
+                            Text("${phase.key}: ${phase.value}ms", style = MaterialTheme.typography.labelSmall, color = colors.mutedForeground, modifier = Modifier.padding(start = 8.dp))
                         }
                     }
-
-                    Text(
-                        text = trace.timestamp,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.mutedForeground
-                    )
+                    Text(trace.time, style = MaterialTheme.typography.labelSmall, color = colors.mutedForeground)
                 }
             }
         }

@@ -3,7 +3,6 @@ package com.freebuff.admin.ui
 import com.freebuff.admin.api.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +12,6 @@ enum class Screen { Login, Overview, Tokens, Models, Traces, Setup, Playground, 
 
 class AppViewModel {
     val api = AdminApi()
-
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val _currentScreen = MutableStateFlow(Screen.Overview)
@@ -25,7 +23,6 @@ class AppViewModel {
     private val _toastMessage = MutableStateFlow<String?>(null)
     val toastMessage: StateFlow<String?> = _toastMessage
 
-    // Data states
     private val _overview = MutableStateFlow<OverviewData?>(null)
     val overview: StateFlow<OverviewData?> = _overview
 
@@ -50,14 +47,8 @@ class AppViewModel {
     private val _metrics = MutableStateFlow<MetricsData?>(null)
     val metrics: StateFlow<MetricsData?> = _metrics
 
-    private val _version = MutableStateFlow<VersionData?>(null)
-    val version: StateFlow<VersionData?> = _version
-
-    private val _smokeResult = MutableStateFlow<String?>(null)
-    val smokeResult: StateFlow<String?> = _smokeResult
-
-    private val _chatMessages = MutableStateFlow<List<ChatMessage>>(emptyList())
-    val chatMessages: StateFlow<List<ChatMessage>> = _chatMessages
+    private val _chatMessages = MutableStateFlow<List<Pair<String, String>>>(emptyList())
+    val chatMessages: StateFlow<List<Pair<String, String>>> = _chatMessages
 
     private val _chatLoading = MutableStateFlow(false)
     val chatLoading: StateFlow<Boolean> = _chatLoading
@@ -65,24 +56,31 @@ class AppViewModel {
     private val _selectedModel = MutableStateFlow("")
     val selectedModel: StateFlow<String> = _selectedModel
 
-    // ── Navigation ──
+    // ── Persistence (set from App.kt) ──
+    var savedUrl: String = ""
+    var savedCookie: String = ""
+
+    fun tryRestoreSession(): Boolean {
+        if (savedUrl.isNotEmpty() && savedCookie.isNotEmpty()) {
+            api.restoreSession(savedUrl, savedCookie)
+            _currentScreen.value = Screen.Overview
+            scope.launch { refreshCurrentScreen() }
+            return true
+        }
+        return false
+    }
 
     fun navigateTo(screen: Screen) {
         _currentScreen.value = screen
         scope.launch { refreshCurrentScreen() }
     }
 
-    // ── Data loading ──
-
     private suspend fun refreshCurrentScreen() {
         try {
             when (_currentScreen.value) {
                 Screen.Overview -> _overview.value = api.getOverview()
                 Screen.Tokens -> _tokens.value = api.getTokens()
-                Screen.Models -> {
-                    _models.value = api.getModels()
-                    _version.value = api.getVersion()
-                }
+                Screen.Models -> _models.value = api.getModels()
                 Screen.Traces -> _traces.value = api.getTraces()
                 Screen.Setup -> _setup.value = api.getSetup()
                 Screen.Config -> _config.value = api.getConfig()
@@ -91,25 +89,20 @@ class AppViewModel {
                 else -> {}
             }
         } catch (e: Exception) {
-            _toastMessage.value = "Failed to load: ${e.message}"
+            _toastMessage.value = "Load failed: ${e.message}"
         }
     }
 
-    fun refresh() {
-        scope.launch { refreshCurrentScreen() }
-    }
-
-    fun dismissToast() {
-        _toastMessage.value = null
-    }
-
-    // ── Auth ──
+    fun refresh() { scope.launch { refreshCurrentScreen() } }
+    fun dismissToast() { _toastMessage.value = null }
 
     suspend fun login(serverUrl: String, password: String): Boolean {
         _isLoading.value = true
         val result = api.login(serverUrl, password)
         _isLoading.value = false
         if (result) {
+            savedUrl = serverUrl
+            savedCookie = api.getSessionCookie()
             _currentScreen.value = Screen.Overview
             scope.launch { refreshCurrentScreen() }
         }
@@ -119,33 +112,24 @@ class AppViewModel {
     fun logout() {
         api.logout()
         _currentScreen.value = Screen.Login
-        _overview.value = null
-        _tokens.value = null
-        _models.value = null
-        _traces.value = null
-        _setup.value = null
-        _config.value = null
-        _logs.value = null
-        _metrics.value = null
+        _overview.value = null; _tokens.value = null; _models.value = null
+        _traces.value = null; _setup.value = null; _config.value = null
+        _logs.value = null; _metrics.value = null
     }
 
-    // ── Token actions ──
-
-    fun testToken(id: String) { scope.launch { api.testToken(id); refresh() } }
-    fun testAllTokens() { scope.launch { api.testAllTokens(); refresh() } }
-    fun unlockToken(id: String) { scope.launch { api.unlockToken(id); refresh() } }
-    fun finishToken(id: String) { scope.launch { api.finishToken(id); refresh() } }
-    fun addToken() { scope.launch { api.addToken(); refresh() } }
-    fun removeToken() { scope.launch { api.removeToken(); refresh() } }
+    fun testToken(id: Int) { scope.launch { api.testToken(id); _tokens.value = api.getTokens() } }
+    fun testAllTokens() { scope.launch { api.testAllTokens(); _tokens.value = api.getTokens() } }
+    fun unlockToken(id: Int) { scope.launch { api.unlockToken(id); _tokens.value = api.getTokens() } }
+    fun finishToken(id: Int) { scope.launch { api.finishToken(id); _tokens.value = api.getTokens() } }
+    fun addToken() { scope.launch { api.addToken(); _tokens.value = api.getTokens() } }
+    fun removeToken() { scope.launch { api.removeToken(); _tokens.value = api.getTokens() } }
     fun switchMode() { scope.launch { api.switchMode(); refresh() } }
-
-    // ── Config actions ──
 
     fun saveConfig(content: String) {
         scope.launch {
             api.saveConfig(content)
             _config.value = api.getConfig()
-            _toastMessage.value = "Configuration saved"
+            _toastMessage.value = "Config saved"
         }
     }
 
@@ -153,40 +137,27 @@ class AppViewModel {
         scope.launch {
             api.reloadConfig()
             _config.value = api.getConfig()
-            _toastMessage.value = "Configuration reloaded"
+            _toastMessage.value = "Config reloaded"
         }
     }
-
-    // ── Smoke test ──
-
-    fun runSmokeTest(model: String, prompt: String) {
-        scope.launch {
-            try {
-                val result = api.smokeTest(model, prompt, false)
-                _smokeResult.value = result.toString()
-            } catch (e: Exception) {
-                _toastMessage.value = "Smoke test failed: ${e.message}"
-            }
-        }
-    }
-
-    // ── Playground ──
 
     fun setSelectedModel(model: String) { _selectedModel.value = model }
 
     fun sendChat(prompt: String) {
         val model = _selectedModel.value.ifEmpty { "auto" }
         val messages = _chatMessages.value.toMutableList()
-        messages.add(ChatMessage("user", prompt))
+        messages.add(Pair("user", prompt))
         _chatMessages.value = messages
         _chatLoading.value = true
-
         scope.launch {
             try {
-                val response = api.chat(model, _chatMessages.value)
-                _chatMessages.value = _chatMessages.value + ChatMessage("assistant", response)
+                val msgJson = messages.joinToString(",", "[", "]") { (role, content) ->
+                    """{"role":"$role","content":"$content"}"""
+                }
+                val response = api.chat(model, msgJson)
+                _chatMessages.value = _chatMessages.value + Pair("assistant", response)
             } catch (e: Exception) {
-                _chatMessages.value = _chatMessages.value + ChatMessage("assistant", "Error: ${e.message}")
+                _chatMessages.value = _chatMessages.value + Pair("assistant", "Error: ${e.message}")
             }
             _chatLoading.value = false
         }
@@ -194,20 +165,5 @@ class AppViewModel {
 
     fun clearChat() { _chatMessages.value = emptyList() }
 
-    // ── Diagnostics ──
-
-    fun runDiagnostics() {
-        scope.launch {
-            try {
-                val result = api.runDiagnostics()
-                _toastMessage.value = result.toString()
-            } catch (e: Exception) {
-                _toastMessage.value = "Diagnostics failed: ${e.message}"
-            }
-        }
-    }
-
-    fun destroy() {
-        api.close()
-    }
+    fun destroy() { api.close() }
 }

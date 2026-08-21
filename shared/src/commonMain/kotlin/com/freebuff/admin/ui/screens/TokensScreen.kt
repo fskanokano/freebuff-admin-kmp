@@ -32,14 +32,20 @@ fun TokensScreen(viewModel: AppViewModel) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Mode and actions
         item {
             AppCard(colors = colors) {
                 Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Mode: ", style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                        StatusBadge(
+                            text = d.mode.uppercase(),
+                            color = if (d.in_bridge) AppColors.Purple else AppColors.Blue
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("(${d.token_count} tokens)", style = MaterialTheme.typography.bodySmall, color = colors.mutedForeground)
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         GlassButton("Test All", onClick = { viewModel.testAllTokens() })
                         GlassButton("Add", onClick = { viewModel.addToken() })
                         GlassButton("Remove Last", onClick = { viewModel.removeToken() }, destructive = true)
@@ -48,96 +54,65 @@ fun TokensScreen(viewModel: AppViewModel) {
             }
         }
 
-        // Stats
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatCard("Total", "${d.total}", modifier = Modifier.weight(1f), colors = colors)
-                StatCard("Active", "${d.active}", modifier = Modifier.weight(1f), iconColor = AppColors.Green, colors = colors)
-                StatCard("In Flight", "${d.total_in_flight}/${d.max_in_flight}", modifier = Modifier.weight(1f), iconColor = AppColors.Orange, colors = colors)
-            }
-        }
-
-        // Token list
         itemsIndexed(d.tokens) { idx, token ->
             AppCard(colors = colors) {
                 Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Token ${token.index}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = colors.onSurface)
+                        Spacer(modifier = Modifier.width(8.dp))
                         StatusBadge(
-                            text = token.state,
-                            color = when (token.state) {
-                                "active" -> AppColors.Green
-                                "idle" -> AppColors.Gray500
-                                "cooldown" -> AppColors.Orange
-                                "error" -> AppColors.Red
+                            text = token.session_status,
+                            color = when (token.session_status) {
+                                "active" -> AppColors.Green; "cooldown" -> AppColors.Orange; "error" -> AppColors.Red
                                 else -> colors.mutedForeground
                             }
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = token.key_hint,
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                            color = colors.onSurface
-                        )
-                        if (token.pool_id.isNotEmpty()) {
+                        if (token.session_instance.isNotEmpty()) {
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = token.pool_id,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.mutedForeground
-                            )
+                            Text(token.session_instance, style = MaterialTheme.typography.labelSmall, color = colors.mutedForeground)
+                        }
+                    }
+
+                    if (token.daily_limit > 0) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress = { token.usage_pct / 100f },
+                            modifier = Modifier.fillMaxWidth().height(4.dp),
+                            color = when { token.usage_pct >= 90 -> AppColors.Red; token.usage_pct >= 60 -> AppColors.Orange; else -> AppColors.Green },
+                            trackColor = colors.border
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("msgs/24h: ${token.messages_24h} | requests: ${token.requests} | active: ${token.active_runs} | risk: ${token.risk_level}", style = MaterialTheme.typography.labelSmall, color = colors.mutedForeground)
+
+                    // Quota per model
+                    if (token.has_quota) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        token.quota.forEach { q ->
+                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                                Text(q.model, style = MaterialTheme.typography.labelSmall, color = colors.onSurface, modifier = Modifier.weight(1f))
+                                Text("${q.recent}/${q.limit} ${q.period}", style = MaterialTheme.typography.labelSmall, color = colors.mutedForeground)
+                                if (q.resets_in.isNotEmpty()) {
+                                    Text(" (${q.resets_in})", style = MaterialTheme.typography.labelSmall, color = AppColors.Orange)
+                                }
+                            }
+                            if (q.has_bar) {
+                                LinearProgressIndicator(
+                                    progress = { q.usage_pct / 100f },
+                                    modifier = Modifier.fillMaxWidth().height(3.dp),
+                                    color = if (q.near_limit) AppColors.Red else AppColors.Green,
+                                    trackColor = colors.border
+                                )
+                            }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-
-                    // Usage bar
-                    val total = token.requests + token.errors
-                    val pct = if (total > 0) token.successes.toFloat() / total else 0f
-                    LinearProgressIndicator(
-                        progress = { pct },
-                        modifier = Modifier.fillMaxWidth().height(4.dp),
-                        color = when {
-                            pct >= 0.9f -> AppColors.Green
-                            pct >= 0.5f -> AppColors.Orange
-                            else -> AppColors.Red
-                        },
-                        trackColor = colors.border,
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = "${token.requests} req / ${token.errors} err / ${token.successes} ok / ${token.in_flight} active",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.mutedForeground
-                    )
-
-                    // Actions
-                    Spacer(modifier = Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(
-                            onClick = { viewModel.testToken(idx.toString()) },
-                            modifier = Modifier.height(32.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp)
-                        ) { Text("Test", style = MaterialTheme.typography.labelSmall) }
-
-                        OutlinedButton(
-                            onClick = { viewModel.unlockToken(idx.toString()) },
-                            modifier = Modifier.height(32.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp)
-                        ) { Text("Unlock", style = MaterialTheme.typography.labelSmall) }
-
-                        OutlinedButton(
-                            onClick = { viewModel.finishToken(idx.toString()) },
-                            modifier = Modifier.height(32.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp)
-                        ) { Text("Finish", style = MaterialTheme.typography.labelSmall) }
+                        OutlinedButton(onClick = { viewModel.testToken(token.index) }, modifier = Modifier.height(32.dp), contentPadding = PaddingValues(horizontal = 12.dp)) { Text("Test", style = MaterialTheme.typography.labelSmall) }
+                        OutlinedButton(onClick = { viewModel.unlockToken(token.index) }, modifier = Modifier.height(32.dp), contentPadding = PaddingValues(horizontal = 12.dp)) { Text("Unlock", style = MaterialTheme.typography.labelSmall) }
+                        OutlinedButton(onClick = { viewModel.finishToken(token.index) }, modifier = Modifier.height(32.dp), contentPadding = PaddingValues(horizontal = 12.dp)) { Text("Finish", style = MaterialTheme.typography.labelSmall) }
                     }
                 }
             }

@@ -1,7 +1,6 @@
 plugins {
     id("com.android.application")
     kotlin("android")
-    kotlin("plugin.compose")
 }
 
 android {
@@ -27,10 +26,7 @@ android {
     }
 
     buildTypes {
-        debug {
-            isDebuggable = true
-            isMinifyEnabled = false
-        }
+        debug { isDebuggable = true; isMinifyEnabled = false }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -43,28 +39,13 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    kotlinOptions {
-        jvmTarget = "11"
-    }
-
-    buildFeatures {
-        compose = true
-    }
-
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-    }
+    kotlinOptions { jvmTarget = "11" }
 }
 
 dependencies {
-    implementation(project(":shared"))
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.activity:activity-compose:1.9.3")
-    implementation("org.jetbrains.compose.material3:material3:1.7.1")
-    implementation("org.jetbrains.compose.material:material-icons-extended:1.7.1")
-    implementation("org.jetbrains.compose.components:components-resources:1.7.1")
-    implementation("io.ktor:ktor-client-android:3.0.3")
-    implementation("io.ktor:ktor-client-okhttp:3.0.3")
+    implementation("androidx.compose.material3:material3:1.3.1")
+    implementation("androidx.compose.ui:ui:1.7.6")
+    implementation("androidx.compose.ui:ui-tooling-preview:1.7.6")
 }

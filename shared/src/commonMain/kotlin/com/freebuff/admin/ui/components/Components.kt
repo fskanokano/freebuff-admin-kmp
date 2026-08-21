@@ -1,8 +1,12 @@
 package com.freebuff.admin.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -65,7 +70,7 @@ fun GroupSection(
     }
 }
 
-// ── Row (iOS Settings style) ──
+// ── Row (iOS Settings style, with press feedback) ──
 
 @Composable
 fun GroupRow(
@@ -75,10 +80,14 @@ fun GroupRow(
     onClick: (() -> Unit)? = null,
     colors: AppThemeColors = AppTheme.colors()
 ) {
-    val rowMod = if (onClick != null) modifier.clickable(onClick = onClick) else modifier
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val bgColor by animateFloatAsState(if (isPressed) 0.96f else 1f, animationSpec = spring(dampingRatio = 1f, stiffness = 1000f), label = "row")
+
+    val rowMod = if (onClick != null) modifier.clickable(interactionSource = interactionSource, indication = null, onClick = onClick) else modifier
 
     Row(
-        modifier = rowMod.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = rowMod.fillMaxWidth().scale(bgColor).padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -151,7 +160,7 @@ fun StatCard(
     }
 }
 
-// ── Apple-style Button ──
+// ── Apple-style Button (with press feedback) ──
 
 @Composable
 fun AppleButton(
@@ -162,10 +171,15 @@ fun AppleButton(
     destructive: Boolean = false,
     colors: AppThemeColors = AppTheme.colors()
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (isPressed) 0.96f else 1f, animationSpec = spring(dampingRatio = 1f, stiffness = 1000f), label = "btn")
+
     Button(
         onClick = onClick,
-        modifier = modifier.height(44.dp),
+        modifier = modifier.height(44.dp).scale(scale),
         enabled = enabled,
+        interactionSource = interactionSource,
         shape = RoundedCornerShape(10.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = if (destructive) colors.destructive else colors.primary,
@@ -179,7 +193,7 @@ fun AppleButton(
     }
 }
 
-// ── Pill Button ──
+// ── Pill Button (with press feedback) ──
 
 @Composable
 fun PillButton(
@@ -188,11 +202,16 @@ fun PillButton(
     onClick: () -> Unit,
     colors: AppThemeColors = AppTheme.colors()
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (isPressed) 0.95f else 1f, animationSpec = spring(dampingRatio = 1f, stiffness = 1000f), label = "pill")
+
     Box(
         modifier = Modifier
+            .scale(scale)
             .clip(RoundedCornerShape(8.dp))
             .background(if (selected) colors.primary else colors.fill)
-            .clickable(onClick = onClick)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 7.dp)
     ) {
         Text(

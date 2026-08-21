@@ -17,29 +17,18 @@ import com.freebuff.admin.ui.theme.*
 fun SetupScreen(viewModel: AppViewModel) {
     val data by viewModel.setup.collectAsState()
     val colors = AppTheme.colors()
-
-    if (data == null) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = colors.primary) }
-        return
-    }
+    if (data == null) { Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = colors.primary) }; return }
     val d = data!!
-
-    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        GroupSection(title = "Server Setup", colors = colors) {
-            GroupRow(label = "Base URL", colors = colors, trailing = { Text(d.base_url, style = MaterialTheme.typography.bodySmall, color = colors.primary) })
-            GroupRow(label = "Mode", colors = colors, trailing = { StatusBadge(text = d.mode, color = if (d.bridge) AppColors.Purple else AppColors.Blue) })
-            GroupRow(label = "API Key", colors = colors, trailing = { Text(d.key_hint, style = MaterialTheme.typography.bodySmall, color = colors.mutedForeground) })
-            GroupRow(label = "Tokens", colors = colors, trailing = { Text("${d.token_count}", style = MaterialTheme.typography.bodySmall, color = colors.onSurface) })
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        GroupSection(title = "服务器信息", colors = colors) {
+            GroupRow(label = "地址", colors = colors, trailing = { Text(d.base_url, style = MaterialTheme.typography.bodySmall, color = colors.primary) })
+            GroupRow(label = "模式", colors = colors, trailing = { StatusBadge(text = d.mode, color = if (d.bridge) colors.purple else colors.primary) })
+            GroupRow(label = "API Key", colors = colors, trailing = { Text(d.key_hint, style = MaterialTheme.typography.bodySmall, color = colors.secondaryLabel) })
+            GroupRow(label = "令牌数", colors = colors, trailing = { Text("${d.token_count}", style = MaterialTheme.typography.bodySmall, color = colors.label) })
         }
-
-        GroupSection(title = "Quick Setup", colors = colors) {
-            Surface(modifier = Modifier.fillMaxWidth().padding(12.dp), shape = RoundedCornerShape(8.dp), color = colors.surfaceVariant) {
-                Text(
-                    text = "curl -X POST ${d.base_url}/chat/completions \\\n  -H \"Authorization: Bearer sk-any\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"${d.model}\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}]}'",
-                    modifier = Modifier.padding(12.dp),
-                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, lineHeight = 16.sp),
-                    color = colors.onSurface
-                )
+        GroupSection(title = "快速配置", colors = colors) {
+            Surface(modifier = Modifier.fillMaxWidth().padding(12.dp), shape = RoundedCornerShape(8.dp), color = colors.groupedBackground) {
+                Text("curl -X POST ${d.base_url}/chat/completions \\\n  -H \"Authorization: Bearer sk-any\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"model\":\"${d.model}\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}]}'", modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, lineHeight = 16.sp), color = colors.label)
             }
         }
     }

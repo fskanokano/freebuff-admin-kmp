@@ -16,37 +16,10 @@ import com.freebuff.admin.ui.theme.*
 fun ModelsScreen(viewModel: AppViewModel) {
     val data by viewModel.models.collectAsState()
     val colors = AppTheme.colors()
-
-    if (data == null) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = colors.primary)
-        }
-        return
-    }
+    if (data == null) { Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = colors.primary) }; return }
     val d = data!!
-
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        item {
-            GroupSection(title = "Models (${d.count}) - ${d.agents} Agents", colors = colors) {
-                d.models.forEachIndexed { idx, model ->
-                    GroupRow(label = model.id, colors = colors, trailing = {
-                        if (model.agent.isNotEmpty()) Text(model.agent, style = MaterialTheme.typography.bodySmall, color = colors.primary)
-                    })
-                    if (idx < d.models.lastIndex) AppDivider()
-                }
-            }
-        }
-        if (d.has_aliases) {
-            item {
-                GroupSection(title = "Aliases (${d.aliases.size})", colors = colors) {
-                    d.aliases.forEachIndexed { idx, alias ->
-                        GroupRow(label = alias.alias, colors = colors, trailing = {
-                            Text("-> ${alias.real}", style = MaterialTheme.typography.bodySmall, color = colors.mutedForeground)
-                        })
-                        if (idx < d.aliases.lastIndex) AppDivider()
-                    }
-                }
-            }
-        }
+        item { GroupSection(title = "模型 (${d.count}) · ${d.agents} Agent", colors = colors) { d.models.forEachIndexed { idx, m -> GroupRow(label = m.id, colors = colors, trailing = { if (m.agent.isNotEmpty()) Text(m.agent, style = MaterialTheme.typography.bodySmall, color = colors.primary) }); if (idx < d.models.lastIndex) AppDivider() } } }
+        if (d.has_aliases) { item { GroupSection(title = "别名 (${d.aliases.size})", colors = colors) { d.aliases.forEachIndexed { idx, a -> GroupRow(label = a.alias, colors = colors, trailing = { Text("→ ${a.real}", style = MaterialTheme.typography.bodySmall, color = colors.secondaryLabel) }); if (idx < d.aliases.lastIndex) AppDivider() } } } }
     }
 }

@@ -13,114 +13,22 @@ import androidx.compose.ui.unit.sp
 import com.freebuff.admin.ui.theme.*
 
 @Composable
-fun LoginScreen(
-    onLogin: (serverUrl: String, password: String) -> Unit,
-    isLoading: Boolean,
-    error: String? = null
-) {
+fun LoginScreen(onLogin: (String, String) -> Unit, isLoading: Boolean, error: String? = null) {
     val colors = AppTheme.colors()
-    var serverUrl by remember { mutableStateOf("http://152.70.82.33:3457") }
-    var password by remember { mutableStateOf("") }
+    var url by remember { mutableStateOf("http://152.70.82.33:3457") }
+    var token by remember { mutableStateOf("") }
 
-    Box(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            // Title
-            Text(
-                text = "Freebuff Proxy",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-1).sp
-                ),
-                color = colors.onSurface
-            )
-            Text(
-                text = "Admin Console",
-                style = MaterialTheme.typography.bodyLarge,
-                color = colors.mutedForeground
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Server URL
-            OutlinedTextField(
-                value = serverUrl,
-                onValueChange = { serverUrl = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Server URL", color = colors.mutedForeground) },
-                placeholder = { Text("http://host:port", color = colors.mutedForeground) },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = colors.border,
-                    focusedBorderColor = colors.primary,
-                    unfocusedContainerColor = colors.inputBackground,
-                    focusedContainerColor = colors.inputBackground,
-                    cursorColor = colors.primary,
-                    focusedTextColor = colors.onSurface,
-                    unfocusedTextColor = colors.onSurface
-                )
-            )
-
-            // Password / Admin Token
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Admin Token", color = colors.mutedForeground) },
-                placeholder = { Text("Enter your admin token", color = colors.mutedForeground) },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = colors.border,
-                    focusedBorderColor = colors.primary,
-                    unfocusedContainerColor = colors.inputBackground,
-                    focusedContainerColor = colors.inputBackground,
-                    cursorColor = colors.primary,
-                    focusedTextColor = colors.onSurface,
-                    unfocusedTextColor = colors.onSurface
-                )
-            )
-
-            // Error
-            if (error != null) {
-                Text(
-                    text = error,
-                    color = AppColors.Red,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-
-            // Login button
-            Button(
-                onClick = { onLogin(serverUrl, password) },
-                modifier = Modifier.fillMaxWidth().height(50.dp),
-                enabled = !isLoading && serverUrl.isNotBlank() && password.isNotBlank(),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.primary,
-                    contentColor = colors.surface
-                )
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = colors.surface,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text(
-                        text = "Connect",
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
-                    )
-                }
+    Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
+            Text("Freebuff", style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold, letterSpacing = (-1).sp), color = colors.label)
+            Text("Proxy 管理后台", style = MaterialTheme.typography.bodyLarge, color = colors.secondaryLabel)
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(value = url, onValueChange = { url = it }, modifier = Modifier.fillMaxWidth(), label = { Text("服务器地址") }, placeholder = { Text("http://host:port") }, singleLine = true, shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = colors.inputBorder, focusedBorderColor = colors.primary, cursorColor = colors.primary, focusedTextColor = colors.label, unfocusedTextColor = colors.label, unfocusedContainerColor = colors.inputBackground, focusedContainerColor = colors.inputBackground))
+            OutlinedTextField(value = token, onValueChange = { token = it }, modifier = Modifier.fillMaxWidth(), label = { Text("管理密码") }, placeholder = { Text("Admin Token") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = colors.inputBorder, focusedBorderColor = colors.primary, cursorColor = colors.primary, focusedTextColor = colors.label, unfocusedTextColor = colors.label, unfocusedContainerColor = colors.inputBackground, focusedContainerColor = colors.inputBackground))
+            if (error != null) Text(error, color = colors.destructive, style = MaterialTheme.typography.bodySmall)
+            Button(onClick = { onLogin(url, token) }, modifier = Modifier.fillMaxWidth().height(50.dp), enabled = !isLoading && url.isNotBlank() && token.isNotBlank(), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.surface)) {
+                if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = colors.surface, strokeWidth = 2.dp)
+                else Text("连接", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
             }
         }
     }

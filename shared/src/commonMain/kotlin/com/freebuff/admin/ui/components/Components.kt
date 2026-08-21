@@ -1,7 +1,7 @@
 package com.freebuff.admin.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -20,7 +20,7 @@ import com.freebuff.admin.ui.theme.AppColors
 import com.freebuff.admin.ui.theme.AppTheme
 import com.freebuff.admin.ui.theme.AppThemeColors
 
-// -- AppCard: insetGrouped iOS style --
+// ── Inset Grouped Card (iOS Settings style) ──
 
 @Composable
 fun AppCard(
@@ -32,13 +32,13 @@ fun AppCard(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = colors.card),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, colors.border),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(0.5.dp, colors.separator.copy(alpha = 0.3f)),
         content = content
     )
 }
 
-// -- GroupSection: section header --
+// ── Section Header (iOS Settings style) ──
 
 @Composable
 fun GroupSection(
@@ -50,11 +50,11 @@ fun GroupSection(
         Text(
             text = title,
             style = MaterialTheme.typography.labelLarge.copy(
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Normal,
                 fontSize = 13.sp,
-                letterSpacing = 0.5.sp
+                letterSpacing = 0.2.sp
             ),
-            color = colors.mutedForeground,
+            color = colors.secondaryLabel,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
         AppCard(colors = colors) {
@@ -65,7 +65,7 @@ fun GroupSection(
     }
 }
 
-// -- GroupRow: setting row --
+// ── Row (iOS Settings style) ──
 
 @Composable
 fun GroupRow(
@@ -75,29 +75,23 @@ fun GroupRow(
     onClick: (() -> Unit)? = null,
     colors: AppThemeColors = AppTheme.colors()
 ) {
-    val rowMod = if (onClick != null) {
-        modifier.clickable(onClick = onClick)
-    } else {
-        modifier
-    }
+    val rowMod = if (onClick != null) modifier.clickable(onClick = onClick) else modifier
 
     Row(
-        modifier = rowMod
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+        modifier = rowMod.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
-            color = colors.onSurface,
+            color = colors.label,
             modifier = Modifier.weight(1f)
         )
         trailing?.invoke()
     }
 }
 
-// -- StatusBadge --
+// ── Status Badge ──
 
 @Composable
 fun StatusBadge(
@@ -122,7 +116,7 @@ fun StatusBadge(
     }
 }
 
-// -- StatCard --
+// ── Stat Card ──
 
 @Composable
 fun StatCard(
@@ -136,12 +130,7 @@ fun StatCard(
     AppCard(modifier = modifier, colors = colors) {
         Column(modifier = Modifier.padding(16.dp)) {
             if (icon != null) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = iconColor,
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(imageVector = icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.height(8.dp))
             }
             Text(
@@ -150,22 +139,22 @@ fun StatCard(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = (-0.5).sp
                 ),
-                color = colors.onSurface
+                color = colors.label
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodySmall,
-                color = colors.mutedForeground
+                color = colors.secondaryLabel
             )
         }
     }
 }
 
-// -- GlassButton --
+// ── Apple-style Button ──
 
 @Composable
-fun GlassButton(
+fun AppleButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -173,33 +162,24 @@ fun GlassButton(
     destructive: Boolean = false,
     colors: AppThemeColors = AppTheme.colors()
 ) {
-    val bgColor = when {
-        !enabled -> colors.border
-        destructive -> AppColors.Red
-        else -> colors.primary
-    }
-
     Button(
         onClick = onClick,
         modifier = modifier.height(44.dp),
         enabled = enabled,
         shape = RoundedCornerShape(10.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = bgColor,
+            containerColor = if (destructive) colors.destructive else colors.primary,
             contentColor = Color.White,
-            disabledContainerColor = colors.border,
-            disabledContentColor = colors.mutedForeground
+            disabledContainerColor = colors.fill,
+            disabledContentColor = colors.tertiaryLabel
         ),
         contentPadding = PaddingValues(horizontal = 20.dp)
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
-        )
+        Text(text = text, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
     }
 }
 
-// -- PillButton (for mode switcher) --
+// ── Pill Button ──
 
 @Composable
 fun PillButton(
@@ -211,21 +191,21 @@ fun PillButton(
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(if (selected) colors.primary else colors.border)
+            .background(if (selected) colors.primary else colors.fill)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 14.dp, vertical = 7.dp)
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelMedium.copy(
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
             ),
-            color = if (selected) Color.White else colors.onSurface
+            color = if (selected) Color.White else colors.label
         )
     }
 }
 
-// -- Divider --
+// ── Divider ──
 
 @Composable
 fun AppDivider(
@@ -235,44 +215,18 @@ fun AppDivider(
     HorizontalDivider(
         modifier = modifier.padding(horizontal = 16.dp),
         thickness = 0.5.dp,
-        color = colors.border
+        color = colors.separator
     )
 }
 
-// -- Dot indicator --
+// ── Dot Indicator ──
 
 @Composable
-fun DotIndicator(
-    color: Color,
-    size: Int = 8
-) {
+fun DotIndicator(color: Color, size: Int = 8) {
     Box(
         modifier = Modifier
             .size(size.dp)
             .clip(CircleShape)
             .background(color)
     )
-}
-
-// -- Toast-like message --
-
-@Composable
-fun ToastSnackbar(
-    message: String,
-    onDismiss: () -> Unit,
-    colors: AppThemeColors = AppTheme.colors()
-) {
-    Snackbar(
-        modifier = Modifier.padding(16.dp),
-        containerColor = colors.card,
-        contentColor = colors.onSurface,
-        shape = RoundedCornerShape(12.dp),
-        action = {
-            TextButton(onClick = onDismiss) {
-                Text("OK", color = colors.primary)
-            }
-        }
-    ) {
-        Text(message)
-    }
 }

@@ -27,32 +27,21 @@ fun App(viewModel: AppViewModel) {
         val isLoading by viewModel.isLoading.collectAsState()
         val toastMessage by viewModel.toastMessage.collectAsState()
         val scope = rememberCoroutineScope()
-
         var loginError by remember { mutableStateOf<String?>(null) }
         var initialized by remember { mutableStateOf(false) }
 
-        // Try restore session on first load
         LaunchedEffect(Unit) {
-            if (!initialized) {
-                initialized = true
-                viewModel.tryRestoreSession()
-            }
+            if (!initialized) { initialized = true; viewModel.tryRestoreSession() }
         }
 
         when (connectionState) {
             is ConnectionState.Disconnected -> {
                 LoginScreen(
-                    onLogin = { serverUrl, password ->
+                    onLogin = { url, token ->
                         loginError = null
                         scope.launch {
-                            try {
-                                val success = viewModel.login(serverUrl, password)
-                                if (!success) {
-                                    loginError = "Invalid token or server error"
-                                }
-                            } catch (e: Exception) {
-                                loginError = "Network error: ${e.message}"
-                            }
+                            try { if (!viewModel.login(url, token)) loginError = "密码错误或服务器异常" }
+                            catch (e: Exception) { loginError = "网络错误: ${e.message}" }
                         }
                     },
                     isLoading = isLoading,
@@ -65,7 +54,7 @@ fun App(viewModel: AppViewModel) {
         }
 
         toastMessage?.let { msg ->
-            Snackbar(modifier = Modifier.padding(16.dp), containerColor = AppColors.Gray900, contentColor = AppColors.Surface, shape = RoundedCornerShape(12.dp)) { Text(msg) }
+            Snackbar(modifier = Modifier.padding(16.dp), containerColor = AppColors.Gray900, contentColor = AppColors.CardBg, shape = RoundedCornerShape(12.dp)) { Text(msg) }
         }
     }
 }
@@ -77,24 +66,45 @@ private fun MainContent(viewModel: AppViewModel, currentScreen: Screen, isLoadin
     Scaffold(
         containerColor = colors.background,
         topBar = {
+            // iOS-style large title
             Surface(color = colors.surface, tonalElevation = 0.dp) {
-                Row(modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Freebuff Proxy", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp), color = colors.onSurface)
-                    Spacer(modifier = Modifier.weight(1f))
-                    TextButton(onClick = { viewModel.logout() }) { Text("Exit", color = colors.onSurface) }
+                Column(modifier = Modifier.fillMaxWidth().statusBarsPadding()) {
+                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Spacer(modifier = Modifier.weight(1f))
+                        TextButton(onClick = { viewModel.logout() }) { Text("退出", color = colors.primary) }
+                    }
+                    Text(
+                        text = screenTitle(currentScreen),
+                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp),
+                        color = colors.label,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
             }
         },
         bottomBar = {
             NavigationBar(containerColor = colors.surface, tonalElevation = 0.dp) {
                 listOf(
-                    ScreenData(Screen.Overview, "Home", Icons.Default.Home),
-                    ScreenData(Screen.Tokens, "Tokens", Icons.Default.List),
-                    ScreenData(Screen.Models, "Models", Icons.Default.Build),
-                    ScreenData(Screen.Traces, "Traces", Icons.Default.Search),
-                    ScreenData(Screen.Setup, "Setup", Icons.Default.Settings),
+                    NavItem(Screen.Overview, "总览", Icons.Default.Home),
+                    NavItem(Screen.Tokens, "令牌", Icons.Default.List),
+                    NavItem(Screen.Models, "模型", Icons.Default.Build),
+                    NavItem(Screen.Traces, "追踪", Icons.Default.Search),
+                    NavItem(Screen.Setup, "设置", Icons.Default.Settings),
                 ).forEach { item ->
-                    NavigationBarItem(selected = currentScreen == item.screen, onClick = { viewModel.navigateTo(item.screen) }, icon = { Icon(item.icon, contentDescription = item.label) }, label = { Text(item.label, fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = colors.primary, selectedTextColor = colors.primary, unselectedIconColor = colors.mutedForeground, unselectedTextColor = colors.mutedForeground, indicatorColor = colors.primary.copy(alpha = 0.12f)))
+                    NavigationBarItem(
+                        selected = currentScreen == item.screen,
+                        onClick = { viewModel.navigateTo(item.screen) },
+                        icon = { Icon(item.icon, contentDescription = item.label) },
+                        label = { Text(item.label, fontSize = 10.sp) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = colors.primary,
+                            selectedTextColor = colors.primary,
+                            unselectedIconColor = colors.secondaryLabel,
+                            unselectedTextColor = colors.secondaryLabel,
+                            indicatorColor = colors.primary.copy(alpha = 0.12f)
+                        )
+                    )
                 }
             }
         }
@@ -121,4 +131,17 @@ private fun MainContent(viewModel: AppViewModel, currentScreen: Screen, isLoadin
     }
 }
 
-private data class ScreenData(val screen: Screen, val label: String, val icon: ImageVector)
+private fun screenTitle(screen: Screen): String = when (screen) {
+    Screen.Overview -> "总览"
+    Screen.Tokens -> "令牌管理"
+    Screen.Models -> "模型"
+    Screen.Traces -> "请求追踪"
+    Screen.Setup -> "部署指南"
+    Screen.Playground -> "对话测试"
+    Screen.Config -> "配置编辑"
+    Screen.Logs -> "日志"
+    Screen.Metrics -> "指标"
+    Screen.Login -> "登录"
+}
+
+private data class NavItem(val screen: Screen, val label: String, val icon: ImageVector)

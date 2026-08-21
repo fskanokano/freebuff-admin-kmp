@@ -54,7 +54,12 @@ fun App(viewModel: AppViewModel) {
         }
 
         toastMessage?.let { msg ->
-            Snackbar(modifier = Modifier.padding(16.dp), containerColor = AppColors.Gray900, contentColor = AppColors.CardBg, shape = RoundedCornerShape(12.dp)) { Text(msg) }
+            Snackbar(
+                modifier = Modifier.padding(16.dp).animateContentSize(),
+                containerColor = AppColors.Gray900,
+                contentColor = AppColors.CardBg,
+                shape = RoundedCornerShape(12.dp)
+            ) { Text(msg) }
         }
     }
 }

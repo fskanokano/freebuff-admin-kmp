@@ -1,5 +1,7 @@
 package com.freebuff.admin.ui.screens
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -46,7 +48,9 @@ fun OverviewScreen(viewModel: AppViewModel) {
 
         if (d.tokens.isNotEmpty()) {
             item { Text("令牌池", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Normal), color = colors.secondaryLabel, modifier = Modifier.padding(start = 16.dp, top = 8.dp)) }
-            items(d.tokens) { token ->
+            items(d.tokens.size) { idx ->
+                val token = d.tokens[idx]
+                AnimatedVisibility(visible = true, enter = fadeIn(tween(200, delayMillis = idx * 50)) + slideInVertically(tween(200, delayMillis = idx * 50)) { it / 2 }) {
                 AppCard(colors = colors) {
                     Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -63,6 +67,7 @@ fun OverviewScreen(viewModel: AppViewModel) {
                         }
                         Text("24h: ${token.messages_24h}  活跃: ${token.active_runs}  使用率: ${token.usage_pct}%", style = MaterialTheme.typography.labelSmall, color = colors.secondaryLabel)
                     }
+                }
                 }
             }
         }

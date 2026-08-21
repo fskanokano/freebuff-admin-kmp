@@ -248,6 +248,11 @@ class AdminApi {
     private fun ensureClient(): HttpClient {
         if (client == null) {
             client = HttpClient(OkHttp) {
+                engine {
+                    config {
+                        followRedirects(false)
+                    }
+                }
                 install(ContentNegotiation) {
                     json(Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true })
                 }
@@ -255,7 +260,6 @@ class AdminApi {
                     requestTimeoutMillis = 30000
                     connectTimeoutMillis = 10000
                 }
-                followRedirects = false
                 expectSuccess = false
             }
         }
@@ -272,8 +276,9 @@ class AdminApi {
                 url = "$baseUrl/admin/login",
                 formParameters = parameters { append("token", password) }
             )
+            // Server returns 302 with Set-Cookie on success, 401 on failure
             val setCookie = response.headers["Set-Cookie"]
-            if (setCookie != null) {
+            if (setCookie != null && setCookie.contains("fb_admin=")) {
                 sessionCookie = setCookie.substringBefore(";")
                 connectionState.value = ConnectionState.Connected(baseUrl)
                 true
@@ -300,7 +305,7 @@ class AdminApi {
     fun getSessionCookie(): String = sessionCookie
 
     private fun HttpRequestBuilder.adminCookie() {
-        header("Cookie", sessionCookie)
+        // Cookie jar handles this automatically via OkHttp engine
     }
 
     // ── GET ──

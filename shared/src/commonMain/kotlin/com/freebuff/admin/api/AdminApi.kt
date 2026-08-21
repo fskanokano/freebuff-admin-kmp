@@ -248,11 +248,6 @@ class AdminApi {
     private fun ensureClient(): HttpClient {
         if (client == null) {
             client = HttpClient(OkHttp) {
-                engine {
-                    config {
-                        followRedirects(false)
-                    }
-                }
                 install(ContentNegotiation) {
                     json(Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true })
                 }
@@ -272,12 +267,13 @@ class AdminApi {
         baseUrl = serverUrl.trimEnd('/')
         val c = ensureClient()
         return try {
-            val response = c.submitForm(
-                url = "$baseUrl/admin/login",
-                formParameters = parameters { append("token", password) }
-            )
-            // Server returns 302 with Set-Cookie on success, 401 on failure
+            // Use raw post instead of submitForm to avoid any Ktor redirect handling
+            val response: HttpResponse = c.post("$baseUrl/admin/login") {
+                contentType(ContentType.Application.FormUrlEncoded)
+                setBody("token=$password")
+            }
             val setCookie = response.headers["Set-Cookie"]
+            val status = response.status
             if (setCookie != null && setCookie.contains("fb_admin=")) {
                 sessionCookie = setCookie.substringBefore(";")
                 connectionState.value = ConnectionState.Connected(baseUrl)

@@ -45,8 +45,14 @@ fun App(viewModel: AppViewModel) {
                     onLogin = { serverUrl, password ->
                         loginError = null
                         scope.launch {
-                            val success = viewModel.login(serverUrl, password)
-                            if (!success) loginError = "Connection failed"
+                            try {
+                                val success = viewModel.login(serverUrl, password)
+                                if (!success) {
+                                    loginError = "Invalid token or server error"
+                                }
+                            } catch (e: Exception) {
+                                loginError = "Network error: ${e.message}"
+                            }
                         }
                     },
                     isLoading = isLoading,

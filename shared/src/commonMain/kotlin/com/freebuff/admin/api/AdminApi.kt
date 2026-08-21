@@ -267,18 +267,20 @@ class AdminApi {
         baseUrl = serverUrl.trimEnd('/')
         val c = ensureClient()
         return try {
-            // Use raw post instead of submitForm to avoid any Ktor redirect handling
-            val response: HttpResponse = c.post("$baseUrl/admin/login") {
-                contentType(ContentType.Application.FormUrlEncoded)
-                setBody("token=$password")
-            }
+            val response = c.submitForm(
+                url = "$baseUrl/admin/login",
+                formParameters = parameters {
+                    append("token", password)
+                }
+            )
             val setCookie = response.headers["Set-Cookie"]
-            val status = response.status
             if (setCookie != null && setCookie.contains("fb_admin=")) {
                 sessionCookie = setCookie.substringBefore(";")
                 connectionState.value = ConnectionState.Connected(baseUrl)
                 true
             } else {
+                // Check if server returned an error message
+                val body = response.bodyAsText()
                 false
             }
         } catch (e: Exception) {
